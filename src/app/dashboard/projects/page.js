@@ -5,7 +5,7 @@ import {
     Search, Filter, Plus, MoreVertical,
     Calendar, Users, BarChart, MessageSquare,
     Clock, CheckCircle, AlertCircle, Download,
-    Eye, Edit, Trash2, Share2, Copy
+    Eye, Edit, Trash2, Share2, Copy, TrendingUp, DollarSign
 } from 'lucide-react'
 import Link from 'next/link'
 
