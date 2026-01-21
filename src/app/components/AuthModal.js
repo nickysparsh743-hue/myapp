@@ -167,7 +167,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
 
     const renderStep1 = () => (
         <>
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 ">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-r from-neon-green/20 to-neon-blue/20 flex items-center justify-center mx-auto mb-4">
                     {mode === 'login' ? (
                         <Lock className="w-8 h-8 text-neon-green" />
@@ -453,7 +453,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
     )
 
     const renderStep2 = () => (
-        <div className="text-center py-8">
+        <div className="text-center py-8 ">
             <div className="w-20 h-20 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-6">
                 <Mail className="w-10 h-10 text-green-400" />
             </div>
@@ -486,7 +486,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
     )
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex justify-center  overflow-y-auto p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
@@ -494,7 +494,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
             />
 
             {/* Modal */}
-            <div className="relative glass-effect rounded-2xl w-full max-w-md border border-white/10 shadow-2xl animate-fadeIn">
+            <div className="relative glass-effect rounded-2xl w-full max-w-md overflow-y-auto border border-white/10 shadow-2xl animate-fadeIn">
                 {/* Close Button */}
                 <button
                     onClick={onClose}

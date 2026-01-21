@@ -158,7 +158,7 @@ const ContactPage = () => {
                                     <div>
                                         <h3 className="font-bold mb-1">Email</h3>
                                         <a href="mailto:contact@algo-x.com" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
-                                            contact@algo-x.com
+                                            nicholusmush@gmail.com
                                         </a>
                                     </div>
                                 </div>
@@ -170,7 +170,7 @@ const ContactPage = () => {
                                     <div>
                                         <h3 className="font-bold mb-1">Phone</h3>
                                         <a href="tel:+254700000000" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
-                                            +254 700 000 000
+                                            +254 703576876
                                         </a>
                                     </div>
                                 </div>
@@ -189,7 +189,7 @@ const ContactPage = () => {
                             {/* WhatsApp Button */}
                             <div className="mb-12">
                                 <a
-                                    href="https://wa.me/254700000000"
+                                    href="https://wa.me/254703576876"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-all duration-300 w-full justify-center"
