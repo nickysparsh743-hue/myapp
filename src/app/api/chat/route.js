@@ -1,26 +1,37 @@
-import { NextResponse } from 'next/server'
+// app/api/chat/route.js
+import { getGeminiResponse, detectIntent, getActionFromIntent } from '@/lib/gemini';
 
-export async function POST(request) {
+export async function POST(req) {
     try {
-        const { message, context } = await request.json()
+        const { message } = await req.json();
 
-        // Here you would integrate with:
-        // 1. OpenAI API
-        // 2. Your own AI model
-        // 3. CRM for lead capture
-
-        // Simulated AI response
-        const response = {
-            reply: `I understand you're asking about: "${message}". Based on our expertise...`,
-            suggestions: ['Get a quote', 'Schedule call', 'View portfolio'],
-            confidence: 0.92
+        if (!message) {
+            return Response.json({
+                response: "Hi! How can I help you today?"
+            });
         }
 
-        return NextResponse.json(response)
+        // Get response (will use fallback if API key missing)
+        const response = await getGeminiResponse(message);
+
+        // Detect intent for UI
+        const intent = detectIntent(message);
+        const action = getActionFromIntent(intent);
+
+        return Response.json({
+            response,
+            intent,
+            action
+        });
+
     } catch (error) {
-        return NextResponse.json(
-            { error: 'Failed to process message' },
-            { status: 500 }
-        )
+        console.error('API Error:', error);
+        return Response.json({
+            response: "Hi! I'm Algo X Assistant. What would you like to know?"
+        });
     }
+}
+
+export async function OPTIONS() {
+    return new Response(null, { status: 204 });
 }

@@ -41,7 +41,7 @@ const Hero = () => {
                             Get a Quote
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                         </Link>
-                        <Link href="/contact#contact" className="btn-secondary">
+                        <Link href="/contact" className="btn-secondary">
                             Talk to Us
                         </Link>
                     </div>

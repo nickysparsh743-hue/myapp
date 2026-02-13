@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import CTA from '../components/CTA'
 import Link from 'next/link'
-import { Mail, Phone, MapPin, MessageCircle, Send } from 'lucide-react'
+import { Mail, Phone, MapPin, MessageCircle, Send, CheckCircle } from 'lucide-react'
 
 const ContactPage = () => {
     const [formData, setFormData] = useState({
@@ -11,6 +11,12 @@ const ContactPage = () => {
         email: '',
         service: '',
         message: ''
+    })
+
+    const [status, setStatus] = useState({
+        submitting: false,
+        submitted: false,
+        error: null
     })
 
     const services = [
@@ -32,18 +38,45 @@ const ContactPage = () => {
         })
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
-        // Handle form submission
-        console.log('Form submitted:', formData)
-        // Reset form
-        setFormData({
-            name: '',
-            email: '',
-            service: '',
-            message: ''
-        })
-        alert('Thank you! We will contact you soon.')
+
+        setStatus({ submitting: true, submitted: false, error: null })
+
+        try {
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to send message')
+            }
+
+            // Success
+            setStatus({ submitting: false, submitted: true, error: null })
+
+            // Reset form
+            setFormData({
+                name: '',
+                email: '',
+                service: '',
+                message: ''
+            })
+
+            // Clear success message after 5 seconds
+            setTimeout(() => {
+                setStatus(prev => ({ ...prev, submitted: false }))
+            }, 5000)
+
+        } catch (error) {
+            setStatus({ submitting: false, submitted: false, error: error.message })
+        }
     }
 
     return (
@@ -66,6 +99,25 @@ const ContactPage = () => {
                         <div className="glass-effect rounded-3xl p-8 neon-border">
                             <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
 
+                            {/* Success Message */}
+                            {status.submitted && (
+                                <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
+                                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                                    <p className="text-green-400">
+                                        Thank you! Your message has been sent successfully. We&apos;ll get back to you within 24 hours.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Error Message */}
+                            {status.error && (
+                                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                                    <p className="text-red-400">
+                                        {status.error}. Please try again or contact us directly via email.
+                                    </p>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div>
                                     <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -78,7 +130,8 @@ const ContactPage = () => {
                                         value={formData.name}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300"
+                                        disabled={status.submitting}
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                         placeholder="Your name"
                                     />
                                 </div>
@@ -94,7 +147,8 @@ const ContactPage = () => {
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300"
+                                        disabled={status.submitting}
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                         placeholder="your@email.com"
                                     />
                                 </div>
@@ -109,7 +163,8 @@ const ContactPage = () => {
                                         value={formData.service}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300"
+                                        disabled={status.submitting}
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <option value="">Select a service</option>
                                         {services.map((service) => (
@@ -131,17 +186,29 @@ const ContactPage = () => {
                                         onChange={handleChange}
                                         required
                                         rows="5"
-                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300 resize-none"
+                                        disabled={status.submitting}
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none transition-all duration-300 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                                         placeholder="Tell us about your project..."
                                     />
                                 </div>
 
                                 <button
                                     type="submit"
-                                    className="btn-primary w-full flex items-center justify-center gap-2 group"
+                                    disabled={status.submitting}
+                                    className={`btn-primary w-full flex items-center justify-center gap-2 group ${status.submitting ? 'opacity-75 cursor-not-allowed' : ''
+                                        }`}
                                 >
-                                    Send Message
-                                    <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                                    {status.submitting ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Send Message
+                                            <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                                        </>
+                                    )}
                                 </button>
                             </form>
                         </div>
@@ -157,9 +224,10 @@ const ContactPage = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold mb-1">Email</h3>
-                                        <a href="mailto:contact@algo-x.com" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
+                                        <a href="mailto:nicholusmush@gmail.com" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
                                             nicholusmush@gmail.com
                                         </a>
+                                        <p className="text-sm text-gray-500 mt-1">For project inquiries</p>
                                     </div>
                                 </div>
 
@@ -169,9 +237,10 @@ const ContactPage = () => {
                                     </div>
                                     <div>
                                         <h3 className="font-bold mb-1">Phone</h3>
-                                        <a href="tel:+254700000000" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
-                                            +254 703576876
+                                        <a href="tel:+254703576876" className="text-gray-400 hover:text-neon-green transition-colors duration-300">
+                                            +254 703 576 876
                                         </a>
+                                        <p className="text-sm text-gray-500 mt-1">Mon-Fri, 9am-6pm EAT</p>
                                     </div>
                                 </div>
 
@@ -182,6 +251,7 @@ const ContactPage = () => {
                                     <div>
                                         <h3 className="font-bold mb-1">Location</h3>
                                         <p className="text-gray-400">Nairobi, Kenya</p>
+                                        <p className="text-sm text-gray-500 mt-1">Available for remote collaboration worldwide</p>
                                     </div>
                                 </div>
                             </div>
@@ -192,10 +262,11 @@ const ContactPage = () => {
                                     href="https://wa.me/254703576876"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-all duration-300 w-full justify-center"
+                                    className="inline-flex items-center gap-3 px-6 py-4 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 transition-all duration-300 w-full justify-center group"
                                 >
-                                    <MessageCircle className="w-6 h-6 text-green-400" />
+                                    <MessageCircle className="w-6 h-6 text-green-400 group-hover:scale-110 transition-transform duration-300" />
                                     <span className="font-semibold">Chat on WhatsApp</span>
+                                    <span className="text-xs text-green-400 ml-2">Typically replies within 1 hour</span>
                                 </a>
                             </div>
 
@@ -215,12 +286,19 @@ const ContactPage = () => {
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Trust Badge */}
+                            <div className="mt-6 p-4 bg-gradient-to-r from-neon-green/5 to-neon-blue/5 rounded-xl border border-white/5">
+                                <p className="text-sm text-gray-400 text-center">
+                                    🔒 Your information is secure and encrypted. We never share your data.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* FAQ Section */}
+            {/* FAQ Section - Unchanged */}
             <section className="section-padding bg-dark-gray/30">
                 <div className="container-custom">
                     <h2 className="text-3xl md:text-4xl font-bold mb-12 text-center">
@@ -246,7 +324,7 @@ const ContactPage = () => {
                                 answer: 'Absolutely! We serve clients globally while maintaining our focus on African markets.'
                             },
                         ].map((faq, index) => (
-                            <div key={index} className="glass-effect rounded-2xl p-6">
+                            <div key={index} className="glass-effect rounded-2xl p-6 hover:neon-border transition-all duration-300">
                                 <h3 className="font-bold mb-3">{faq.question}</h3>
                                 <p className="text-gray-400">{faq.answer}</p>
                             </div>
@@ -254,6 +332,7 @@ const ContactPage = () => {
                     </div>
                 </div>
             </section>
+
             {/* Legal Links Section */}
             <section className="section-padding bg-dark-gray/50">
                 <div className="container-custom">
@@ -263,16 +342,16 @@ const ContactPage = () => {
 
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {[
-                            { label: 'Terms', href: '/terms' },
-                            { label: 'Privacy', href: '/privacy' },
-                            { label: 'Cookies', href: '/cookies' },
-                            { label: 'Refund', href: '/refund' },
-                            { label: 'SLA', href: '/sla' }
+                            { label: 'Terms of Service', href: '/terms' },
+                            { label: 'Privacy Policy', href: '/privacy' },
+                            { label: 'Cookie Policy', href: '/cookies' },
+                            { label: 'Refund Policy', href: '/refund' },
+                            { label: 'Service Level', href: '/sla' }
                         ].map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-neon-green/10 border border-white/10 hover:border-neon-green/30 transition-all duration-300 text-center"
+                                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-neon-green/10 border border-white/10 hover:border-neon-green/30 transition-all duration-300 text-center text-sm"
                             >
                                 {link.label}
                             </Link>
@@ -282,7 +361,6 @@ const ContactPage = () => {
             </section>
 
             <CTA />
-
         </>
     )
 }

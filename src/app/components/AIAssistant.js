@@ -1,86 +1,94 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { 
-  Bot, Send, X, Mic, MicOff, Paperclip, 
+import {
+  Bot, Send, X, Loader2,
   Cpu, Zap, Brain, MessageSquare, Sparkles,
-  Loader2, ThumbsUp, ThumbsDown, Copy, Download,
-  Code, Globe, Shield, Database, Smartphone, FileText
+  ThumbsUp, ThumbsDown, Copy, Download, Code,
+  Globe, Shield, Database, Smartphone,
+  GitBranch, CheckCircle2,
+  MoreVertical, History, BookOpen, Users,
+  ChevronDown, Maximize2, Minimize2
 } from 'lucide-react'
 
-const AIAssistant = () => {
+const TechAdviser = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
-  const [isListening, setIsListening] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [mode, setMode] = useState('general')
-  const [conversationHistory, setConversationHistory] = useState([])
+  const [copiedId, setCopiedId] = useState(null)
+  const [isExpanded, setIsExpanded] = useState(false)
   const messagesEndRef = useRef(null)
 
   // AI Capabilities
   const capabilities = [
     {
       id: 'code',
-      name: 'Code Assistance',
+      name: 'Code Review',
       icon: Code,
-      description: 'Code review, debugging, optimization'
+      color: 'from-blue-500 to-cyan-500',
+      description: 'Review, debug, optimize'
     },
     {
       id: 'consult',
-      name: 'Tech Consultation',
-      icon: Cpu,
-      description: 'Architecture, stack selection, best practices'
-    },
-    {
-      id: 'business',
-      name: 'Business Analysis',
-      icon: Globe,
-      description: 'Requirements, planning, strategy'
+      name: 'Architecture',
+      icon: GitBranch,
+      color: 'from-purple-500 to-pink-500',
+      description: 'System design, stack selection'
     },
     {
       id: 'security',
-      name: 'Security Audit',
+      name: 'Security',
       icon: Shield,
-      description: 'Vulnerability assessment, best practices'
+      color: 'from-red-500 to-orange-500',
+      description: 'Audits, best practices'
     },
     {
       id: 'data',
-      name: 'Data Insights',
+      name: 'Data & AI',
       icon: Database,
-      description: 'Analytics, visualization, ML advice'
+      color: 'from-green-500 to-emerald-500',
+      description: 'Analytics, ML, optimization'
     },
     {
       id: 'mobile',
-      name: 'Mobile Dev',
+      name: 'Mobile',
       icon: Smartphone,
-      description: 'App architecture, platform guidance'
+      color: 'from-indigo-500 to-purple-500',
+      description: 'iOS, Android, cross-platform'
+    },
+    {
+      id: 'general',
+      name: 'General',
+      icon: Brain,
+      color: 'from-gray-500 to-gray-600',
+      description: 'Any tech question'
     }
+  ]
+
+  // Quick actions for left sidebar
+  const quickActions = [
+    { id: 'new', icon: MessageSquare, label: 'New Chat' },
+    { id: 'history', icon: History, label: 'History' },
+    { id: 'docs', icon: BookOpen, label: 'Docs' },
+    { id: 'expert', icon: Users, label: 'Live Expert' }
   ]
 
   // Initial messages
   const initialMessages = [
     {
-      id: 1,
-      text: "Hello! I'm Algo X AI Assistant, powered by advanced language models. I can help you with technical questions, project planning, code reviews, and digital strategy.",
-      sender: 'ai',
+      id: 'welcome-1',
+      role: 'assistant',
+      content: "👋 Hi! I'm Algo X Tech Adviser. I specialize in software architecture, code reviews, security audits, and technical strategy.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     },
     {
-      id: 2,
-      text: "How can I assist you today? I specialize in:\n\n• Web & Mobile Development\n• AI/ML Solutions\n• Cybersecurity\n• Data Analytics\n• Project Planning\n• Technical Consultation",
-      sender: 'ai',
+      id: 'welcome-2',
+      role: 'assistant',
+      content: "What technical challenge are you facing today? I can help with:\n\n• **Code reviews & debugging**\n• **System architecture design**\n• **Technology stack selection**\n• **Performance optimization**\n• **Security assessments**\n• **Development best practices**",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
-  ]
-
-  // Quick prompts
-  const quickPrompts = [
-    "How much does a website cost?",
-    "Explain AI vs ML differences",
-    "Best practices for React performance",
-    "Cybersecurity checklist for startups",
-    "How to plan a 6-month project?"
   ]
 
   useEffect(() => {
@@ -95,375 +103,412 @@ const AIAssistant = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Voice recognition (simulated)
-  const toggleVoice = () => {
-    if (isListening) {
-      setIsListening(false)
-    } else {
-      setIsListening(true)
-      setTimeout(() => {
-        setIsListening(false)
-        setInput("I'd like to discuss a web development project for my business.")
-      }, 2000)
-    }
-  }
-
-  // Process AI response (simulated)
-  const processAIResponse = async (userMessage) => {
-    setIsProcessing(true)
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    let response = ""
-    
-    // Contextual responses
-    if (userMessage.toLowerCase().includes('cost') || userMessage.toLowerCase().includes('price')) {
-      response = "Project costs vary based on complexity. For a standard website: $3,000-$8,000. For custom web apps: $8,000-$25,000. AI/ML projects: $15,000-$50,000+. Want a detailed estimate?"
-    } else if (userMessage.toLowerCase().includes('ai') || userMessage.toLowerCase().includes('machine learning')) {
-      response = "AI refers to systems performing human-like tasks. ML is a subset where systems learn from data. For your project:\n\n1. Define clear objectives\n2. Gather quality data\n3. Choose appropriate algorithms\n4. Plan for model training & deployment\n\nNeed specific ML architecture advice?"
-    } else if (userMessage.toLowerCase().includes('react') || userMessage.toLowerCase().includes('frontend')) {
-      response = "React performance tips:\n\n✅ Use React.memo for expensive components\n✅ Implement code splitting with React.lazy\n✅ Optimize re-renders with useMemo/useCallback\n✅ Virtualize long lists\n✅ Use production builds with optimizations\n\nWant code examples?"
-    } else if (userMessage.toLowerCase().includes('security') || userMessage.toLowerCase().includes('cyber')) {
-      response = "Startup security checklist:\n\n1. Implement HTTPS with SSL/TLS\n2. Use secure authentication (OAuth 2.0, JWT)\n3. Regular security audits\n4. Data encryption at rest & transit\n5. Input validation & sanitization\n6. Regular dependency updates\n7. Implement rate limiting\n\nNeed penetration testing?"
-    } else if (userMessage.toLowerCase().includes('project') || userMessage.toLowerCase().includes('timeline')) {
-      response = "6-month project plan:\n\nMonth 1-2: Discovery & Planning\n• Requirements gathering\n• Architecture design\n• Technology stack selection\n\nMonth 3-4: Development\n• Core feature development\n• Testing & iteration\n\nMonth 5: Integration & QA\n• System integration\n• Comprehensive testing\n\nMonth 6: Deployment & Launch\n• Production deployment\n• Documentation & training\n\nWant a customized project plan?"
-    } else {
-      response = "Thanks for your question! I've analyzed your query and here's my technical assessment:\n\nBased on industry best practices and Algo X's expertise, I recommend a phased approach with clear milestones. Would you like me to elaborate on any specific aspect or prepare a detailed technical proposal?"
-    }
-    
-    const aiMessage = {
-      id: messages.length + 2,
-      text: response,
-      sender: 'ai',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      suggestions: [
-        "Provide code example",
-        "Create project timeline",
-        "Estimate budget",
-        "Schedule consultation"
-      ]
-    }
-    
-    setMessages(prev => [...prev, aiMessage])
-    setConversationHistory(prev => [...prev, { user: userMessage, ai: response }])
-    setIsProcessing(false)
-  }
-
+  // ✅ FIXED: Real API call with proper history filtering
   const handleSend = async () => {
     if (!input.trim() || isProcessing) return
-    
+
     const userMessage = {
-      id: messages.length + 1,
-      text: input,
-      sender: 'user',
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
-    
+
     setMessages(prev => [...prev, userMessage])
     setInput('')
-    
-    await processAIResponse(input)
-  }
+    setIsProcessing(true)
 
-  const handleQuickPrompt = (prompt) => {
-    setInput(prompt)
-  }
+    try {
+      // ✅ FIXED: Exclude welcome messages from history
+      const history = messages
+        .filter(msg => msg.id !== 'welcome-1' && msg.id !== 'welcome-2')
+        .slice(-6)
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
 
-  const handleSuggestion = (suggestion) => {
-    const suggestionMessage = {
-      id: messages.length + 1,
-      text: suggestion,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const response = await fetch('/api/tech-adviser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: userMessage.content,
+          mode,
+          history
+        })
+      });
+
+      const data = await response.json();
+
+      const aiMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: data.response || "I'm here to help with your technical questions.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+
+      const errorMessage = {
+        id: `ai-${Date.now()}`,
+        role: 'assistant',
+        content: "I'm having trouble connecting. Please try again in a moment.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+
+    } finally {
+      setIsProcessing(false);
     }
-    
-    setMessages(prev => [...prev, suggestionMessage])
-    processAIResponse(suggestion)
   }
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    // Show toast notification
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
+  const copyToClipboard = async (text, id) => {
+    await navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   const exportConversation = () => {
-    const conversationText = messages.map(msg => 
-      `${msg.sender === 'ai' ? 'AI Assistant' : 'You'} (${msg.timestamp}): ${msg.text}`
-    ).join('\n\n')
-    
-    const blob = new Blob([conversationText], { type: 'text/plain' })
+    const text = messages.map(msg =>
+      `[${msg.timestamp}] ${msg.role === 'assistant' ? '🤖 Tech Adviser' : '👤 You'}:\n${msg.content}\n`
+    ).join('\n---\n')
+
+    const blob = new Blob([text], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `algo-x-ai-conversation-${Date.now()}.txt`
+    a.download = `tech-adviser-${Date.now()}.txt`
     a.click()
   }
 
+  const resetChat = () => {
+    setMessages(initialMessages)
+    setMode('general')
+  }
+
+  const currentCapability = capabilities.find(c => c.id === mode) || capabilities[5]
+
   return (
     <>
-      {/* Floating Assistant Button */}
+      {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 left-6 w-16 h-16 rounded-full bg-gradient-to-r from-neon-purple to-pink-500 flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 z-40 group animate-pulse hover:animate-none"
-        aria-label="Open AI Assistant"
+        className="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-gradient-to-r from-neon-purple to-pink-500 flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 z-40 group hover:scale-110"
       >
-        <Brain className="w-7 h-7 text-white" />
-        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-r from-neon-green to-neon-blue animate-ping" />
-        
-        {/* Tooltip */}
-        <div className="absolute left-20 bottom-0 bg-dark-gray border border-neon-purple/30 rounded-lg p-3 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-          <p className="font-bold gradient-text">AI Assistant</p>
-          <p className="text-gray-300">Get instant tech advice</p>
+        <Brain className="w-6 h-6 text-white" />
+        <div className="absolute -top-1 -right-1 w-3 h-3">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-neon-green"></span>
+          </span>
         </div>
       </button>
 
-      {/* AI Assistant Panel - FIXED with proper modal and close button */}
+      {/* Tech Adviser Panel */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-4xl h-[80vh] glass-effect rounded-3xl border border-neon-purple/30 shadow-2xl flex flex-col overflow-hidden">
-            {/* Header - FIXED with close button */}
-            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-dark-gray to-dark flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <div className={`w-full transition-all duration-300 ${isExpanded ? 'max-w-6xl h-[90vh]' : 'max-w-5xl h-[80vh]'
+            } glass-effect rounded-3xl border border-neon-purple/30 shadow-2xl flex flex-col overflow-hidden`}>
+
+            {/* Header */}
+            <div className="p-3 border-b border-white/10 bg-gradient-to-r from-dark-gray to-dark flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-neon-purple to-pink-500 flex items-center justify-center">
-                    <Brain className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-r from-neon-green to-neon-blue border-2 border-dark">
-                    <Sparkles className="w-2.5 h-2.5 text-white mx-auto mt-0.5" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-neon-purple to-pink-500 flex items-center justify-center">
+                    <Cpu className="w-5 h-5 text-white" />
                   </div>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Algo X AI Assistant</h2>
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <Zap className="w-4 h-4 text-neon-green" />
-                    <span>Powered by GPT-4 & Custom ML Models</span>
-                    <span className="px-2 py-0.5 rounded-full bg-neon-green/20 text-neon-green text-xs">
-                      LIVE
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    Algo X Tech Adviser
+                    <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
+                      Gemini 2.0
                     </span>
+                  </h2>
+                  <div className="flex items-center gap-1 text-xs text-gray-400">
+                    <Globe className="w-3 h-3" />
+                    <span>Architecture • Code • Security</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={exportConversation}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                  title="Export conversation"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
+
+              {/* Controls */}
+              <div className="flex items-center gap-1">
+                {/* Mode Dropdown */}
+                <div className="relative group">
+                  <button className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm">
+                    <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${currentCapability.color}`} />
+                    <span className="text-xs font-medium">{currentCapability.name}</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-dark-gray border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-2 space-y-1">
+                      {capabilities.map((cap) => {
+                        const Icon = cap.icon
+                        return (
+                          <button
+                            key={cap.id}
+                            onClick={() => setMode(cap.id)}
+                            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${mode === cap.id
+                                ? `bg-gradient-to-r ${cap.color} bg-opacity-20`
+                                : 'hover:bg-white/5'
+                              }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{cap.name}</span>
+                            {mode === cap.id && (
+                              <CheckCircle2 className="w-3 h-3 ml-auto text-neon-green" />
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Settings Dropdown */}
+                <div className="relative group">
+                  <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-dark-gray border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                    <div className="p-2 space-y-1">
+                      <button
+                        onClick={exportConversation}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-xs"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Export Chat</span>
+                      </button>
+                      <button
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-xs"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <Minimize2 className="w-3.5 h-3.5" />
+                            <span>Compact View</span>
+                          </>
+                        ) : (
+                          <>
+                            <Maximize2 className="w-3.5 h-3.5" />
+                            <span>Expand View</span>
+                          </>
+                        )}
+                      </button>
+                      <div className="border-t border-white/10 my-1" />
+                      <button
+                        onClick={resetChat}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors text-xs text-red-400"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>New Chat</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                  aria-label="Close assistant"
+                  className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Capabilities Grid */}
-            <div className="p-4 border-b border-white/10">
-              <h3 className="text-lg font-bold mb-3">What I can help with:</h3>
-              <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-                {capabilities.map((cap) => {
-                  const Icon = cap.icon
+            {/* Main Content - 3 Column Layout */}
+            <div className="flex-1 flex min-h-0">
+
+              {/* Left Sidebar - Quick Actions (15%) */}
+              <div className="w-[15%] bg-dark-gray/30 border-r border-white/10 p-2 flex flex-col items-center gap-3">
+                {quickActions.map((action) => {
+                  const Icon = action.icon
                   return (
                     <button
-                      key={cap.id}
-                      onClick={() => setMode(cap.id)}
-                      className={`p-2 rounded-lg text-center transition-all duration-300 ${
-                        mode === cap.id
-                          ? 'bg-gradient-to-r from-neon-purple/20 to-pink-500/20 border border-neon-purple'
-                          : 'border border-white/10 hover:border-neon-purple/30 hover:bg-white/5'
-                      }`}
+                      key={action.id}
+                      onClick={() => {
+                        if (action.id === 'new') resetChat()
+                        if (action.id === 'expert') window.open('mailto:nicholusmush@gmail.com')
+                      }}
+                      className="w-full flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+                      title={action.label}
                     >
-                      <Icon className="w-4 h-4 mx-auto mb-1 text-neon-purple" />
-                      <p className="text-xs font-medium">{cap.name}</p>
+                      <Icon className="w-5 h-5 text-gray-400 group-hover:text-neon-purple transition-colors" />
+                      <span className="text-[10px] text-gray-500 group-hover:text-gray-300">
+                        {action.label}
+                      </span>
                     </button>
                   )
                 })}
               </div>
-            </div>
 
-            {/* Conversation Area - FIXED with proper padding */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Messages - FIXED padding */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+              {/* Center - Chat Area (70%) */}
+              <div className="w-[70%] flex flex-col">
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.map((msg, index) => (
                     <div
-                      className={`max-w-[85%] rounded-2xl p-4 ${
-                        msg.sender === 'user'
-                          ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark'
-                          : 'bg-gradient-to-r from-dark-gray to-dark border border-white/10'
-                      }`}
+                      key={msg.id || index}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        {msg.sender === 'ai' ? (
-                          <>
-                            <Brain className="w-4 h-4 text-neon-purple" />
-                            <span className="font-bold text-neon-purple text-sm">AI Assistant</span>
-                          </>
-                        ) : (
-                          <>
-                            <MessageSquare className="w-4 h-4" />
-                            <span className="font-bold text-sm">You</span>
-                          </>
-                        )}
-                        <span className="text-xs opacity-70 ml-auto">{msg.timestamp}</span>
-                      </div>
-                      
-                      <p className="whitespace-pre-line text-sm mb-3">{msg.text}</p>
-                      
-                      {/* AI Message Actions */}
-                      {msg.sender === 'ai' && (
-                        <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                          <div className="flex gap-1">
+                      <div
+                        className={`max-w-[90%] rounded-2xl p-4 ${msg.role === 'user'
+                            ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark'
+                            : 'bg-dark-gray/50 border border-white/10'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          {msg.role === 'assistant' ? (
+                            <>
+                              <div className="p-1 rounded-lg bg-gradient-to-r from-neon-purple to-pink-500">
+                                <Cpu className="w-3 h-3 text-white" />
+                              </div>
+                              <span className="font-bold text-xs text-neon-purple">Tech Adviser</span>
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-3 h-3" />
+                              <span className="font-bold text-xs">You</span>
+                            </>
+                          )}
+                          <span className="text-[10px] opacity-70 ml-auto">{msg.timestamp}</span>
+                        </div>
+
+                        <div className="whitespace-pre-line text-sm leading-relaxed">
+                          {msg.content}
+                        </div>
+
+                        {msg.role === 'assistant' && (
+                          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/10">
                             <button
-                              onClick={() => copyToClipboard(msg.text)}
-                              className="p-1.5 rounded hover:bg-white/10 transition-colors"
-                              title="Copy to clipboard"
+                              onClick={() => copyToClipboard(msg.content, msg.id)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-white/10 transition-colors text-[10px]"
                             >
-                              <Copy className="w-3 h-3" />
+                              {copiedId === msg.id ? (
+                                <>
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-neon-green" />
+                                  <span className="text-neon-green">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-2.5 h-2.5" />
+                                  <span>Copy</span>
+                                </>
+                              )}
                             </button>
-                            <button
-                              className="p-1.5 rounded hover:bg-white/10 transition-colors"
-                              title="Helpful"
-                            >
-                              <ThumbsUp className="w-3 h-3" />
-                            </button>
-                            <button
-                              className="p-1.5 rounded hover:bg-white/10 transition-colors"
-                              title="Not helpful"
-                            >
-                              <ThumbsDown className="w-3 h-3" />
+                            <button className="flex items-center gap-1 px-2 py-1 rounded-md hover:bg-white/10 transition-colors text-[10px]">
+                              <ThumbsUp className="w-2.5 h-2.5" />
+                              <span>Helpful</span>
                             </button>
                           </div>
-                          
-                          {/* Suggestions */}
-                          {msg.suggestions && (
-                            <div className="flex gap-1">
-                              {msg.suggestions.map((suggestion, idx) => (
-                                <button
-                                  key={idx}
-                                  onClick={() => handleSuggestion(suggestion)}
-                                  className="px-2 py-1 text-xs rounded-full border border-neon-purple/30 hover:border-neon-purple hover:bg-neon-purple/10 transition-colors"
-                                >
-                                  {suggestion}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Quick Prompts */}
-                {messages.length <= 2 && (
-                  <div className="mt-4">
-                    <p className="text-gray-400 mb-2 text-sm">Try asking:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {quickPrompts.map((prompt, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleQuickPrompt(prompt)}
-                          className="px-3 py-1.5 rounded-full border border-white/10 hover:border-neon-purple hover:bg-neon-purple/10 transition-all duration-300 text-xs"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Processing Indicator */}
-                {isProcessing && (
-                  <div className="flex items-center gap-2 text-gray-400 text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin text-neon-purple" />
-                    <span>AI Assistant is analyzing your query...</span>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input Area */}
-              <div className="p-4 border-t border-white/10 bg-dark-gray/50">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleVoice}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isListening
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        : 'hover:bg-white/10 border border-white/10'
-                    }`}
-                    title={isListening ? 'Stop listening' : 'Voice input'}
-                  >
-                    {isListening ? (
-                      <MicOff className="w-4 h-4" />
-                    ) : (
-                      <Mic className="w-4 h-4" />
-                    )}
-                  </button>
-                  
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                      placeholder={`Ask about ${mode === 'code' ? 'code' : mode === 'consult' ? 'technology' : mode === 'business' ? 'project planning' : 'anything'}...`}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-neon-purple focus:outline-none text-sm pr-20"
-                      disabled={isProcessing}
-                    />
-                    {isListening && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-1">
-                        <div className="w-1 h-3 bg-red-400 animate-pulse" />
-                        <div className="w-1 h-4 bg-red-400 animate-pulse delay-100" />
-                        <div className="w-1 h-3 bg-red-400 animate-pulse delay-200" />
+                        )}
                       </div>
-                    )}
-                  </div>
-                  
-                  <button
-                    onClick={handleSend}
-                    disabled={!input.trim() || isProcessing}
-                    className="p-3 rounded-xl bg-gradient-to-r from-neon-purple to-pink-500 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4 text-white" />
-                  </button>
+                    </div>
+                  ))}
+
+                  {isProcessing && (
+                    <div className="flex justify-start">
+                      <div className="bg-dark-gray/50 border border-white/10 rounded-2xl p-3">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-3 h-3 animate-spin text-neon-purple" />
+                          <span className="text-xs text-gray-400">Analyzing with Gemini AI...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
                 </div>
-                
-                {/* Mode Indicator */}
-                <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Cpu className="w-3 h-3" />
-                    <span>Mode: </span>
-                    <span className="text-neon-purple font-medium capitalize">
-                      {mode === 'code' ? 'Code Assistance' :
-                       mode === 'consult' ? 'Tech Consultation' :
-                       mode === 'business' ? 'Business Analysis' :
-                       mode === 'security' ? 'Security Audit' :
-                       mode === 'data' ? 'Data Insights' : 'Mobile Development'}
-                    </span>
-                  </div>
-                  
-                  <div className="text-xs text-gray-500">
-                    {conversationHistory.length} exchanges
+
+                {/* Input Area */}
+                <div className="p-3 border-t border-white/10 bg-dark-gray/30">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder={`Ask about ${currentCapability.name.toLowerCase()}...`}
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-purple focus:outline-none text-xs"
+                        disabled={isProcessing}
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || isProcessing}
+                      className="p-2 rounded-lg bg-gradient-to-r from-neon-purple to-pink-500 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {isProcessing ? (
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 text-white" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="p-3 border-t border-white/10 text-center text-xs text-gray-500">
-              <p>Powered by advanced AI models. Responses may not always be perfect. For critical decisions, consult with our human experts.</p>
+              {/* Right Sidebar - Context Panel (15%) */}
+              <div className="w-[15%] bg-dark-gray/30 border-l border-white/10 p-3">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">
+                      Current Mode
+                    </h4>
+                    <div className={`p-2 rounded-lg bg-gradient-to-r ${currentCapability.color} bg-opacity-10`}>
+                      <div className="flex items-center gap-2">
+                        <currentCapability.icon className="w-4 h-4" />
+                        <div>
+                          <p className="text-xs font-medium">{currentCapability.name}</p>
+                          <p className="text-[10px] text-gray-400">{currentCapability.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">
+                      Session
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">Messages</span>
+                        <span className="font-medium">{messages.length}</span>
+                      </div>
+                      <div className="flex justify-between text-[10px]">
+                        <span className="text-gray-400">Model</span>
+                        <span className="font-medium">Gemini 2.0</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/10">
+                    <button
+                      onClick={() => window.open('mailto:nicholusmush@gmail.com')}
+                      className="w-full py-1.5 px-2 rounded-lg bg-neon-purple/20 hover:bg-neon-purple/30 transition-colors text-[10px] font-medium text-neon-purple"
+                    >
+                      Get Expert Help
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -472,4 +517,4 @@ const AIAssistant = () => {
   )
 }
 
-export default AIAssistant
+export default TechAdviser

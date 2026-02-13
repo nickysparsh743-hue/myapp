@@ -1,165 +1,170 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 const AuthContext = createContext({})
-
-export const useAuth = () => useContext(AuthContext)
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
-    const router = useRouter()
+    const supabase = createClient()
 
     useEffect(() => {
-        // Check if user is logged in
-        const checkAuth = async () => {
-            try {
-                const token = localStorage.getItem('auth-token')
-                const userData = localStorage.getItem('user-data')
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null)
+            setLoading(false)
+        })
 
-                if (token && userData) {
-                    // Verify token with backend (in real app)
-                    setUser(JSON.parse(userData))
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error)
-                localStorage.removeItem('auth-token')
-                localStorage.removeItem('user-data')
-            } finally {
-                setLoading(false)
-            }
-        }
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null)
+        })
 
-        checkAuth()
+        return () => subscription.unsubscribe()
     }, [])
 
     const login = async (email, password) => {
         try {
-            // Mock API call - replace with real API
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
             })
 
-            if (response.ok) {
-                const data = await response.json()
-                setUser(data.user)
-                localStorage.setItem('auth-token', data.token)
-                localStorage.setItem('user-data', JSON.stringify(data.user))
-                return { success: true, data }
-            } else {
-                const error = await response.json()
-                return { success: false, error: error.message }
-            }
+            if (error) throw error
+
+            return { success: true, user: data.user }
         } catch (error) {
-            return { success: false, error: 'Network error. Please try again.' }
+            return { success: false, error: error.message }
         }
     }
 
     const register = async (userData) => {
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
+            const { name, email, password, role } = userData
+
+            // Sign up with Supabase
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        name,
+                        role: role || 'user'
+                    },
+                    emailRedirectTo: `${window.location.origin}/auth/callback`
+                }
             })
 
-            if (response.ok) {
-                const data = await response.json()
-                return { success: true, data }
-            } else {
-                const error = await response.json()
-                return { success: false, error: error.message }
+            if (error) throw error
+
+            // Create user profile in your custom table
+            if (data.user) {
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert([
+                        {
+                            id: data.user.id,
+                            name,
+                            email,
+                            role: role || 'user',
+                            created_at: new Date()
+                        }
+                    ])
+
+                if (profileError) throw profileError
+            }
+
+            return {
+                success: true,
+                user: data.user,
+                message: 'Please check your email to confirm your account!'
             }
         } catch (error) {
-            return { success: false, error: 'Network error. Please try again.' }
+            return { success: false, error: error.message }
         }
-    }
-
-    const logout = () => {
-        setUser(null)
-        localStorage.removeItem('auth-token')
-        localStorage.removeItem('user-data')
-        router.push('/')
     }
 
     const forgotPassword = async (email) => {
         try {
-            const response = await fetch('/api/auth/forgot-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/auth/reset-password`
             })
 
-            if (response.ok) {
-                return { success: true }
-            } else {
-                const error = await response.json()
-                return { success: false, error: error.message }
-            }
+            if (error) throw error
+
+            return { success: true }
         } catch (error) {
-            return { success: false, error: 'Network error. Please try again.' }
+            return { success: false, error: error.message }
         }
     }
 
-    const resetPassword = async (token, password) => {
+    const resetPassword = async (newPassword) => {
         try {
-            const response = await fetch('/api/auth/reset-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token, password })
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
             })
 
-            if (response.ok) {
-                return { success: true }
-            } else {
-                const error = await response.json()
-                return { success: false, error: error.message }
-            }
+            if (error) throw error
+
+            return { success: true }
         } catch (error) {
-            return { success: false, error: 'Network error. Please try again.' }
+            return { success: false, error: error.message }
         }
     }
 
     const changePassword = async (oldPassword, newPassword) => {
         try {
-            const token = localStorage.getItem('auth-token')
-            const response = await fetch('/api/auth/change-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ oldPassword, newPassword })
+            // First verify old password by re-authenticating
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: user.email,
+                password: oldPassword
             })
 
-            if (response.ok) {
-                return { success: true }
-            } else {
-                const error = await response.json()
-                return { success: false, error: error.message }
-            }
+            if (signInError) throw new Error('Current password is incorrect')
+
+            // Update to new password
+            const { error } = await supabase.auth.updateUser({
+                password: newPassword
+            })
+
+            if (error) throw error
+
+            return { success: true }
         } catch (error) {
-            return { success: false, error: 'Network error. Please try again.' }
+            return { success: false, error: error.message }
         }
     }
 
-    return (
-        <AuthContext.Provider value={{
-            user,
-            loading,
-            login,
-            register,
-            logout,
-            forgotPassword,
-            resetPassword,
-            changePassword,
-            isAuthenticated: !!user
-        }}>
-            {children}
-        </AuthContext.Provider>
-    )
+    const logout = async () => {
+        try {
+            const { error } = await supabase.auth.signOut()
+            if (error) throw error
+            return { success: true }
+        } catch (error) {
+            return { success: false, error: error.message }
+        }
+    }
+
+    const value = {
+        user,
+        loading,
+        login,
+        register,
+        forgotPassword,
+        resetPassword,
+        changePassword,
+        logout
+    }
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export const useAuth = () => {
+    const context = useContext(AuthContext)
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider')
+    }
+    return context
 }

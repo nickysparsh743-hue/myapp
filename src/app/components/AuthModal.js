@@ -138,7 +138,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
 
             if (result.success) {
                 if (mode === 'login' || mode === 'register') {
-                    setMessage({ type: 'success', text: 'Authentication successful!' })
+                    setMessage({ type: 'success', text: 'Authentication successful! Redirecting to dashboard...' })
                     setTimeout(() => {
                         onClose()
                         resetForm()

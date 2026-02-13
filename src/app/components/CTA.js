@@ -40,7 +40,7 @@ const CTA = () => {
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                         </Link>
                         <Link
-                            href="https://wa.me/your-number"
+                            href="https://wa.me/0703576876"
                             target="_blank"
                             className="btn-secondary flex items-center gap-2"
                         >
