@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
     Save, Bell, Shield, User, Mail,
     Globe, CreditCard, Database, Palette,
@@ -8,28 +8,39 @@ import {
     Trash2, Download, Upload, Check,
     X, AlertTriangle, Info, Moon, Sun
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 export default function SettingsPage() {
+    const { user, loading: authLoading } = useAuth()
+    const supabase = createClient()
+    const router = useRouter()
+
     const [activeTab, setActiveTab] = useState('profile')
     const [saving, setSaving] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(null)
+    const [success, setSuccess] = useState(null)
     const [showPassword, setShowPassword] = useState(false)
 
     const [profile, setProfile] = useState({
-        name: 'John Smith',
-        email: 'john@example.com',
-        phone: '+254 700 000 000',
-        company: 'Tech Solutions Inc.',
-        role: 'Project Manager',
+        name: '',
+        email: '',
+        phone: '',
+        company: '',
+        role: '',
         timezone: 'Africa/Nairobi',
         language: 'English',
-        theme: 'dark'
+        theme: 'dark',
+        bio: ''
     })
 
     const [security, setSecurity] = useState({
-        twoFactor: true,
+        twoFactor: false,
         loginAlerts: true,
         sessionTimeout: 30,
-        passwordLastChanged: '2024-10-15'
+        passwordLastChanged: null
     })
 
     const [notifications, setNotifications] = useState({
@@ -37,7 +48,8 @@ export default function SettingsPage() {
             projectUpdates: true,
             messages: true,
             milestones: true,
-            security: true
+            security: true,
+            marketing: false
         },
         push: {
             projectUpdates: true,
@@ -47,25 +59,253 @@ export default function SettingsPage() {
         }
     })
 
+    const [privacy, setPrivacy] = useState({
+        showOnlineStatus: true,
+        dataSharing: true,
+        profileVisibility: 'public',
+        activityTracking: true
+    })
+
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!authLoading && !user) {
+            router.push('/account/login')
+        }
+    }, [user, authLoading, router])
+
+    // Fetch settings data
+    useEffect(() => {
+        const fetchSettings = async () => {
+            if (!user) return
+
+            try {
+                setLoading(true)
+                setError(null)
+
+                // Fetch profile
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single()
+
+                if (profileError && profileError.code !== 'PGRST116') {
+                    console.error('Error fetching profile:', profileError)
+                }
+
+                // Fetch notification preferences
+                const { data: notifData, error: notifError } = await supabase
+                    .from('notification_preferences')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single()
+
+                if (notifError && notifError.code !== 'PGRST116') {
+                    console.error('Error fetching notifications:', notifError)
+                }
+
+                // Fetch privacy settings
+                const { data: privacyData, error: privacyError } = await supabase
+                    .from('privacy_settings')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .single()
+
+                if (privacyError && privacyError.code !== 'PGRST116') {
+                    console.error('Error fetching privacy:', privacyError)
+                }
+
+                // Update profile state
+                setProfile({
+                    name: profileData?.name || user.user_metadata?.name || user.email?.split('@')[0] || '',
+                    email: user.email || '',
+                    phone: profileData?.phone || '',
+                    company: profileData?.company || '',
+                    role: profileData?.role || user.user_metadata?.role || 'user',
+                    timezone: profileData?.timezone || 'Africa/Nairobi',
+                    language: profileData?.language || 'English',
+                    theme: profileData?.theme || 'dark',
+                    bio: profileData?.bio || ''
+                })
+
+                // Update security state
+                setSecurity({
+                    twoFactor: profileData?.two_factor_enabled || false,
+                    loginAlerts: profileData?.login_alerts !== false,
+                    sessionTimeout: profileData?.session_timeout || 30,
+                    passwordLastChanged: user?.updated_at || new Date().toISOString().split('T')[0]
+                })
+
+                // Update notifications
+                if (notifData) {
+                    setNotifications({
+                        email: notifData.email || notifications.email,
+                        push: notifData.push || notifications.push
+                    })
+                }
+
+                // Update privacy
+                if (privacyData) {
+                    setPrivacy(privacyData)
+                }
+
+            } catch (err) {
+                console.error('Error fetching settings:', err)
+                setError('Failed to load settings')
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchSettings()
+    }, [user, supabase])
+
     const handleSave = async () => {
-        setSaving(true)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setSaving(false)
-        // Show success message
+        try {
+            setSaving(true)
+            setError(null)
+
+            // Update profile
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    name: profile.name,
+                    phone: profile.phone,
+                    company: profile.company,
+                    role: profile.role,
+                    timezone: profile.timezone,
+                    language: profile.language,
+                    theme: profile.theme,
+                    bio: profile.bio,
+                    updated_at: new Date().toISOString()
+                })
+
+            if (profileError) throw profileError
+
+            // Update notification preferences
+            const { error: notifError } = await supabase
+                .from('notification_preferences')
+                .upsert({
+                    user_id: user.id,
+                    email: notifications.email,
+                    push: notifications.push,
+                    updated_at: new Date().toISOString()
+                })
+
+            if (notifError) throw notifError
+
+            // Update privacy settings
+            const { error: privacyError } = await supabase
+                .from('privacy_settings')
+                .upsert({
+                    user_id: user.id,
+                    ...privacy,
+                    updated_at: new Date().toISOString()
+                })
+
+            if (privacyError) throw privacyError
+
+            // Update security settings in profile
+            const { error: securityError } = await supabase
+                .from('profiles')
+                .update({
+                    two_factor_enabled: security.twoFactor,
+                    login_alerts: security.loginAlerts,
+                    session_timeout: security.sessionTimeout,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id)
+
+            if (securityError) throw securityError
+
+            setSuccess('Settings saved successfully!')
+            setTimeout(() => setSuccess(null), 3000)
+
+        } catch (err) {
+            console.error('Error saving settings:', err)
+            setError('Failed to save settings. Please try again.')
+        } finally {
+            setSaving(false)
+        }
     }
 
-    const handlePasswordChange = () => {
-        const current = prompt('Enter current password:')
-        const newPass = prompt('Enter new password:')
-        const confirm = prompt('Confirm new password:')
+    const handlePasswordChange = async () => {
+        router.push('/account/change-password')
+    }
 
-        if (newPass === confirm) {
-            // Handle password change
-            console.log('Password changed')
-        } else {
-            alert('Passwords do not match')
+    const handleDeleteAccount = async () => {
+        if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+            return
         }
+
+        try {
+            setLoading(true)
+            
+            // Call your delete account API
+            const { error } = await supabase.auth.admin.deleteUser(user.id)
+            
+            if (error) throw error
+
+            // Sign out
+            await supabase.auth.signOut()
+            router.push('/')
+            
+        } catch (err) {
+            console.error('Error deleting account:', err)
+            setError('Failed to delete account. Please contact support.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleExportData = async () => {
+        try {
+            setLoading(true)
+            
+            // Fetch all user data
+            const [projects, documents, activities] = await Promise.all([
+                supabase.from('projects').select('*').eq('user_id', user.id),
+                supabase.from('documents').select('*').eq('user_id', user.id),
+                supabase.from('activities').select('*').eq('user_id', user.id)
+            ])
+
+            const exportData = {
+                profile: profile,
+                projects: projects.data,
+                documents: documents.data,
+                activities: activities.data,
+                exported_at: new Date().toISOString()
+            }
+
+            // Create and download file
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `user-data-${new Date().toISOString().split('T')[0]}.json`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+
+        } catch (err) {
+            console.error('Error exporting data:', err)
+            setError('Failed to export data')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (authLoading || loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading settings...</p>
+                </div>
+            </div>
+        )
     }
 
     const tabs = [
@@ -74,7 +314,7 @@ export default function SettingsPage() {
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'billing', label: 'Billing', icon: CreditCard },
         { id: 'appearance', label: 'Appearance', icon: Palette },
-        { id: 'data', label: 'Data & Privacy', icon: Database }
+        { id: 'privacy', label: 'Privacy', icon: Database }
     ]
 
     return (
@@ -104,6 +344,23 @@ export default function SettingsPage() {
                 </button>
             </div>
 
+            {/* Error/Success Messages */}
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg flex items-center justify-between">
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+            )}
+
+            {success && (
+                <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-lg flex items-center gap-2">
+                    <Check className="w-5 h-5" />
+                    <span>{success}</span>
+                </div>
+            )}
+
             <div className="flex flex-col lg:flex-row gap-8">
                 {/* Sidebar */}
                 <div className="lg:w-1/4">
@@ -114,7 +371,7 @@ export default function SettingsPage() {
                                     <User className="w-6 h-6 text-dark" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold">{profile.name}</h3>
+                                    <h3 className="font-bold">{profile.name || 'User'}</h3>
                                     <p className="text-sm text-gray-400">{profile.email}</p>
                                 </div>
                             </div>
@@ -164,9 +421,10 @@ export default function SettingsPage() {
                                         <input
                                             type="email"
                                             value={profile.email}
-                                            onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
+                                            disabled
+                                            className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 opacity-50 cursor-not-allowed"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-2">Phone Number</label>
@@ -175,6 +433,7 @@ export default function SettingsPage() {
                                             value={profile.phone}
                                             onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                                             className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
+                                            placeholder="+1 (555) 123-4567"
                                         />
                                     </div>
                                     <div>
@@ -184,6 +443,7 @@ export default function SettingsPage() {
                                             value={profile.company}
                                             onChange={(e) => setProfile({ ...profile, company: e.target.value })}
                                             className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
+                                            placeholder="Your company"
                                         />
                                     </div>
                                 </div>
@@ -220,6 +480,8 @@ export default function SettingsPage() {
                                 <div>
                                     <label className="block text-sm font-medium mb-2">Bio</label>
                                     <textarea
+                                        value={profile.bio}
+                                        onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                                         placeholder="Tell us about yourself..."
                                         rows="4"
                                         className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none resize-none"
@@ -243,7 +505,7 @@ export default function SettingsPage() {
                                             <div>
                                                 <p className="font-medium">Password</p>
                                                 <p className="text-sm text-gray-400">
-                                                    Last changed: {security.passwordLastChanged}
+                                                    Last changed: {security.passwordLastChanged || 'Never'}
                                                 </p>
                                             </div>
                                             <button
@@ -365,7 +627,10 @@ export default function SettingsPage() {
                                                 <X className="w-4 h-4" />
                                                 Log Out All Sessions
                                             </button>
-                                            <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors flex items-center gap-2">
+                                            <button
+                                                onClick={handleExportData}
+                                                className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors flex items-center gap-2"
+                                            >
                                                 <Download className="w-4 h-4" />
                                                 Export Login History
                                             </button>
@@ -393,7 +658,7 @@ export default function SettingsPage() {
                                             <div key={key} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
                                                 <div>
                                                     <p className="font-medium">
-                                                        {key.split(/(?=[A-Z])/).join(' ')}
+                                                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                                     </p>
                                                     <p className="text-sm text-gray-400">
                                                         Receive email notifications for {key.toLowerCase().replace(/([A-Z])/g, ' $1')}
@@ -427,7 +692,7 @@ export default function SettingsPage() {
                                             <div key={key} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
                                                 <div>
                                                     <p className="font-medium">
-                                                        {key.split(/(?=[A-Z])/).join(' ')}
+                                                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                                                     </p>
                                                     <p className="text-sm text-gray-400">
                                                         Receive push notifications for {key.toLowerCase().replace(/([A-Z])/g, ' $1')}
@@ -450,36 +715,25 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Notification Settings */}
+                                {/* Quiet Hours */}
                                 <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-                                    <h4 className="font-bold mb-4">Advanced Settings</h4>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">Quiet Hours</p>
-                                                <p className="text-sm text-gray-400">
-                                                    Disable non-urgent notifications during specific hours
-                                                </p>
-                                            </div>
-                                            <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
-                                                Configure
-                                            </button>
+                                    <h4 className="font-bold mb-4">Quiet Hours</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm mb-2">Start Time</label>
+                                            <input
+                                                type="time"
+                                                defaultValue="22:00"
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
+                                            />
                                         </div>
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="font-medium">Notification Sounds</p>
-                                                <p className="text-sm text-gray-400">
-                                                    Play sound for important notifications
-                                                </p>
-                                            </div>
-                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="sr-only peer"
-                                                    defaultChecked
-                                                />
-                                                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
-                                            </label>
+                                        <div>
+                                            <label className="block text-sm mb-2">End Time</label>
+                                            <input
+                                                type="time"
+                                                defaultValue="08:00"
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -487,217 +741,10 @@ export default function SettingsPage() {
                         </div>
                     )}
 
-                    {/* Billing Settings */}
-                    {activeTab === 'billing' && (
+                    {/* Privacy Tab */}
+                    {activeTab === 'privacy' && (
                         <div className="glass-effect rounded-2xl p-8 border border-white/10">
-                            <h2 className="text-2xl font-bold mb-6">Billing & Subscription</h2>
-
-                            <div className="space-y-8">
-                                {/* Current Plan */}
-                                <div className="p-6 rounded-lg bg-gradient-to-r from-neon-green/10 to-neon-blue/10 border border-neon-green/20">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h3 className="text-xl font-bold">Professional Plan</h3>
-                                            <p className="text-gray-300">$299/month • Billed annually</p>
-                                        </div>
-                                        <span className="px-4 py-2 rounded-full bg-gradient-to-r from-neon-green to-neon-blue text-dark font-bold">
-                                            Active
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div>
-                                            <p className="text-sm text-gray-400">Projects</p>
-                                            <p className="font-bold">Unlimited</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-400">Storage</p>
-                                            <p className="font-bold">100 GB</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-400">Team Members</p>
-                                            <p className="font-bold">Up to 10</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-gray-400">Support</p>
-                                            <p className="font-bold">24/7 Priority</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Payment Method */}
-                                <div>
-                                    <h3 className="text-lg font-bold mb-4">Payment Method</h3>
-                                    <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-12 h-8 rounded bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                                                    <CreditCard className="w-5 h-5 text-white" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium">Visa ending in 4242</p>
-                                                    <p className="text-sm text-gray-400">Expires 12/2025</p>
-                                                </div>
-                                            </div>
-                                            <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
-                                                Update
-                                            </button>
-                                        </div>
-                                        <button className="w-full py-3 rounded-lg border-2 border-dashed border-white/20 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
-                                            Add New Payment Method
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Billing History */}
-                                <div>
-                                    <h3 className="text-lg font-bold mb-4">Billing History</h3>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead>
-                                                <tr className="border-b border-white/10">
-                                                    <th className="text-left p-4 font-medium">Date</th>
-                                                    <th className="text-left p-4 font-medium">Description</th>
-                                                    <th className="text-left p-4 font-medium">Amount</th>
-                                                    <th className="text-left p-4 font-medium">Status</th>
-                                                    <th className="text-left p-4 font-medium">Invoice</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {[
-                                                    { date: 'Nov 15, 2024', desc: 'Professional Plan', amount: '$299.00', status: 'Paid' },
-                                                    { date: 'Oct 15, 2024', desc: 'Professional Plan', amount: '$299.00', status: 'Paid' },
-                                                    { date: 'Sep 15, 2024', desc: 'Professional Plan', amount: '$299.00', status: 'Paid' },
-                                                    { date: 'Aug 15, 2024', desc: 'Professional Plan + Storage', amount: '$349.00', status: 'Paid' }
-                                                ].map((invoice, idx) => (
-                                                    <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
-                                                        <td className="p-4">{invoice.date}</td>
-                                                        <td className="p-4">{invoice.desc}</td>
-                                                        <td className="p-4">{invoice.amount}</td>
-                                                        <td className="p-4">
-                                                            <span className="px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400">
-                                                                {invoice.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <button className="text-neon-green hover:underline">
-                                                                Download
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Appearance Settings */}
-                    {activeTab === 'appearance' && (
-                        <div className="glass-effect rounded-2xl p-8 border border-white/10">
-                            <h2 className="text-2xl font-bold mb-6">Appearance Settings</h2>
-
-                            <div className="space-y-8">
-                                {/* Theme */}
-                                <div>
-                                    <h3 className="text-lg font-bold mb-4">Theme</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <button
-                                            onClick={() => setProfile({ ...profile, theme: 'dark' })}
-                                            className={`p-6 rounded-lg border-2 transition-all ${profile.theme === 'dark'
-                                                    ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
-                                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center">
-                                                <Moon className="w-8 h-8 mb-3" />
-                                                <span className="font-medium">Dark</span>
-                                                <span className="text-sm text-gray-400">Default</span>
-                                            </div>
-                                        </button>
-                                        <button
-                                            onClick={() => setProfile({ ...profile, theme: 'light' })}
-                                            className={`p-6 rounded-lg border-2 transition-all ${profile.theme === 'light'
-                                                    ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
-                                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center">
-                                                <Sun className="w-8 h-8 mb-3" />
-                                                <span className="font-medium">Light</span>
-                                                <span className="text-sm text-gray-400">Coming soon</span>
-                                            </div>
-                                        </button>
-                                        <button
-                                            onClick={() => setProfile({ ...profile, theme: 'auto' })}
-                                            className={`p-6 rounded-lg border-2 transition-all ${profile.theme === 'auto'
-                                                    ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
-                                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center">
-                                                <div className="relative w-8 h-8 mb-3">
-                                                    <Sun className="w-6 h-6 absolute left-0" />
-                                                    <Moon className="w-6 h-6 absolute right-0" />
-                                                </div>
-                                                <span className="font-medium">Auto</span>
-                                                <span className="text-sm text-gray-400">System setting</span>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* UI Density */}
-                                <div>
-                                    <h3 className="text-lg font-bold mb-4">UI Density</h3>
-                                    <div className="flex gap-4">
-                                        {['Compact', 'Comfortable', 'Spacious'].map((density) => (
-                                            <button
-                                                key={density}
-                                                className={`flex-1 py-4 rounded-lg border transition-colors ${profile.uiDensity === density.toLowerCase()
-                                                        ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
-                                                        : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
-                                                    }`}
-                                            >
-                                                {density}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Accent Color */}
-                                <div>
-                                    <h3 className="text-lg font-bold mb-4">Accent Color</h3>
-                                    <div className="grid grid-cols-5 gap-3">
-                                        {[
-                                            { name: 'Neon Green', value: '#00ff9d' },
-                                            { name: 'Neon Blue', value: '#0088ff' },
-                                            { name: 'Purple', value: '#9d00ff' },
-                                            { name: 'Orange', value: '#ff8800' },
-                                            { name: 'Pink', value: '#ff0088' }
-                                        ].map((color) => (
-                                            <button
-                                                key={color.value}
-                                                className="flex flex-col items-center gap-2"
-                                            >
-                                                <div
-                                                    className="w-12 h-12 rounded-full border-2 border-white/20"
-                                                    style={{ backgroundColor: color.value }}
-                                                />
-                                                <span className="text-sm">{color.name}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Data & Privacy Settings */}
-                    {activeTab === 'data' && (
-                        <div className="glass-effect rounded-2xl p-8 border border-white/10">
-                            <h2 className="text-2xl font-bold mb-6">Data & Privacy</h2>
+                            <h2 className="text-2xl font-bold mb-6">Privacy Settings</h2>
 
                             <div className="space-y-8">
                                 {/* Data Export */}
@@ -709,13 +756,16 @@ export default function SettingsPage() {
                                                 Download all your data including projects, documents, and messages
                                             </p>
                                         </div>
-                                        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity flex items-center gap-2">
+                                        <button
+                                            onClick={handleExportData}
+                                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+                                        >
                                             <Download className="w-4 h-4" />
                                             Export Data
                                         </button>
                                     </div>
                                     <p className="text-sm text-gray-500">
-                                        The export may take some time to prepare. You'll receive an email when it's ready.
+                                        Your data will be downloaded as a JSON file.
                                     </p>
                                 </div>
 
@@ -728,7 +778,10 @@ export default function SettingsPage() {
                                                 Permanently delete your account and all associated data
                                             </p>
                                         </div>
-                                        <button className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2">
+                                        <button
+                                            onClick={handleDeleteAccount}
+                                            className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                        >
                                             <Trash2 className="w-4 h-4" />
                                             Delete Account
                                         </button>
@@ -747,9 +800,9 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Privacy Settings */}
+                                {/* Privacy Toggles */}
                                 <div className="space-y-4">
-                                    <h3 className="text-lg font-bold">Privacy Settings</h3>
+                                    <h3 className="text-lg font-bold">Privacy Controls</h3>
 
                                     <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
                                         <div>
@@ -761,7 +814,8 @@ export default function SettingsPage() {
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                defaultChecked
+                                                checked={privacy.showOnlineStatus}
+                                                onChange={(e) => setPrivacy({ ...privacy, showOnlineStatus: e.target.checked })}
                                                 className="sr-only peer"
                                             />
                                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
@@ -778,23 +832,31 @@ export default function SettingsPage() {
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                defaultChecked
+                                                checked={privacy.dataSharing}
+                                                onChange={(e) => setPrivacy({ ...privacy, dataSharing: e.target.checked })}
                                                 className="sr-only peer"
                                             />
                                             <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
                                         </label>
                                     </div>
-                                </div>
 
-                                {/* Cookie Preferences */}
-                                <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-                                    <h3 className="text-lg font-bold mb-4">Cookie Preferences</h3>
-                                    <p className="text-gray-400 mb-4">
-                                        Manage your cookie settings for this dashboard
-                                    </p>
-                                    <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
-                                        Manage Cookies
-                                    </button>
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+                                        <div>
+                                            <p className="font-medium">Activity Tracking</p>
+                                            <p className="text-sm text-gray-400">
+                                                Allow tracking of your activity for analytics
+                                            </p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={privacy.activityTracking}
+                                                onChange={(e) => setPrivacy({ ...privacy, activityTracking: e.target.checked })}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

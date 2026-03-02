@@ -1,65 +1,81 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-
-// Mock database
-const users = []
 
 export async function POST(request) {
     try {
-        const authHeader = request.headers.get('authorization')
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            )
-        }
-
-        const token = authHeader.split(' ')[1]
         const { oldPassword, newPassword } = await request.json()
 
-        // Verify token
-        let decoded
-        try {
-            decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key')
-        } catch (error) {
+        const cookieStore = cookies()
+        const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            {
+                cookies: {
+                    get(name) {
+                        return cookieStore.get(name)?.value
+                    },
+                    set(name, value, options) {
+                        try {
+                            cookieStore.set({ name, value, ...options })
+                        } catch (error) {
+                            // Handle cookie error
+                        }
+                    },
+                    remove(name, options) {
+                        try {
+                            cookieStore.set({ name, value: '', ...options })
+                        } catch (error) {
+                            // Handle cookie error
+                        }
+                    },
+                },
+            }
+        )
+
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+        if (userError || !user) {
             return NextResponse.json(
-                { error: 'Invalid token' },
+                { success: false, error: 'Not authenticated' },
                 { status: 401 }
             )
         }
 
-        // Find user
-        const user = users.find(u => u.email === decoded.email)
-        if (!user) {
+        // First verify old password by re-authenticating
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password: oldPassword
+        })
+
+        if (signInError) {
             return NextResponse.json(
-                { error: 'User not found' },
-                { status: 404 }
+                { success: false, error: 'Current password is incorrect' },
+                { status: 401 }
             )
         }
 
-        // Verify old password
-        const isValidPassword = await bcrypt.compare(oldPassword, user.password)
-        if (!isValidPassword) {
+        // Update to new password
+        const { error } = await supabase.auth.updateUser({
+            password: newPassword
+        })
+
+        if (error) {
             return NextResponse.json(
-                { error: 'Current password is incorrect' },
+                { success: false, error: error.message },
                 { status: 400 }
             )
         }
 
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10)
-        user.password = hashedPassword
-
         return NextResponse.json(
-            { message: 'Password changed successfully' },
+            { success: true, message: 'Password changed successfully' },
             { status: 200 }
         )
-
     } catch (error) {
-        console.error('Change password error:', error)
+        console.error('Change password API error:', error)
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { success: false, error: 'Internal server error' },
             { status: 500 }
         )
     }

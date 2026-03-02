@@ -8,24 +8,44 @@ import {
     Upload, Download, Calendar, BarChart, Shield, HelpCircle
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardLayout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [notifications, setNotifications] = useState(5)
-    const [user, setUser] = useState(null)
+    const [projects, setProjects] = useState([])
+    const { user, isAuthenticated, loading, logout } = useAuth()
     const pathname = usePathname()
     const router = useRouter()
+    const supabase = createClient()
 
-    // Mock user data
+    // Redirect if not authenticated
     useEffect(() => {
-        setUser({
-            name: 'John Smith',
-            email: 'john@example.com',
-            company: 'Tech Solutions Inc.',
-            avatar: '👤',
-            role: 'Project Manager'
-        })
-    }, [])
+        if (!loading && !isAuthenticated) {
+            router.push('/account/login')
+        }
+    }, [isAuthenticated, loading, router])
+
+    // Fetch user's projects
+    useEffect(() => {
+        const fetchProjects = async () => {
+            if (!user) return
+
+            const { data, error } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(4)
+
+            if (!error && data) {
+                setProjects(data)
+            }
+        }
+
+        fetchProjects()
+    }, [user, supabase])
 
     const navItems = [
         {
@@ -79,16 +99,26 @@ export default function DashboardLayout({ children }) {
         }
     ]
 
-    const projects = [
-        { id: 1, name: 'E-commerce Platform', status: 'active', progress: 75 },
-        { id: 2, name: 'Mobile Banking App', status: 'active', progress: 45 },
-        { id: 3, name: 'AI Chatbot', status: 'review', progress: 90 },
-        { id: 4, name: 'Data Dashboard', status: 'completed', progress: 100 }
-    ]
-
-    const handleLogout = () => {
-        // Handle logout logic
+    const handleLogout = async () => {
+        await logout()
         router.push('/')
+    }
+
+    // Show loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-dark">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading dashboard...</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Don't render anything while redirecting
+    if (!isAuthenticated) {
+        return null
     }
 
     return (
@@ -144,19 +174,21 @@ export default function DashboardLayout({ children }) {
                             <div className="relative group">
                                 <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-white/10 transition-colors">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-neon-green to-neon-blue flex items-center justify-center">
-                                        <span className="text-sm font-bold">{user?.avatar || '👤'}</span>
+                                        <span className="text-sm font-bold">
+                                            {user?.user_metadata?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                                        </span>
                                     </div>
                                     <div className="hidden md:block text-left">
-                                        <p className="text-sm font-medium">{user?.name || 'Loading...'}</p>
-                                        <p className="text-xs text-gray-400">{user?.role || 'User'}</p>
+                                        <p className="text-sm font-medium">{user?.user_metadata?.name || 'User'}</p>
+                                        <p className="text-xs text-gray-400">{user?.user_metadata?.role || 'Member'}</p>
                                     </div>
                                 </button>
 
                                 <div className="absolute right-0 mt-2 w-64 glass-effect rounded-lg border border-white/10 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
                                     <div className="p-4 border-b border-white/10">
-                                        <p className="font-medium">{user?.name}</p>
+                                        <p className="font-medium">{user?.user_metadata?.name || 'User'}</p>
                                         <p className="text-sm text-gray-400">{user?.email}</p>
-                                        <p className="text-xs text-neon-green mt-1">{user?.company}</p>
+                                        <p className="text-xs text-neon-green mt-1">{user?.user_metadata?.role || 'user'}</p>
                                     </div>
                                     <div className="p-2">
                                         <Link
@@ -173,9 +205,16 @@ export default function DashboardLayout({ children }) {
                                             <Shield className="w-4 h-4" />
                                             <span>Billing & Security</span>
                                         </Link>
+                                        <Link
+                                            href="/account/change-password"
+                                            className="flex items-center space-x-2 p-2 rounded hover:bg-white/10 transition-colors"
+                                        >
+                                            <Shield className="w-4 h-4" />
+                                            <span>Change Password</span>
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
-                                            className="flex items-center space-x-2 p-2 rounded hover:bg-white/10 transition-colors w-full text-left"
+                                            className="flex items-center space-x-2 p-2 rounded hover:bg-white/10 transition-colors w-full text-left text-red-400"
                                         >
                                             <LogOut className="w-4 h-4" />
                                             <span>Logout</span>
@@ -198,36 +237,40 @@ export default function DashboardLayout({ children }) {
                         <div className="mb-8">
                             <h3 className="text-sm font-semibold text-gray-400 mb-3">ACTIVE PROJECTS</h3>
                             <div className="space-y-2">
-                                {projects.map((project) => (
-                                    <Link
-                                        key={project.id}
-                                        href={`/dashboard/projects/${project.id}`}
-                                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${project.status === 'active' ? 'bg-neon-green/10 border border-neon-green/20' :
+                                {projects.length > 0 ? (
+                                    projects.map((project) => (
+                                        <Link
+                                            key={project.id}
+                                            href={`/dashboard/projects/${project.id}`}
+                                            className={`flex items-center justify-between p-3 rounded-lg transition-colors ${project.status === 'active' ? 'bg-neon-green/10 border border-neon-green/20' :
                                                 project.status === 'review' ? 'bg-yellow-500/10 border border-yellow-500/20' :
                                                     'bg-green-500/10 border border-green-500/20'
-                                            }`}
-                                    >
-                                        <div>
-                                            <p className="font-medium text-sm">{project.name}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full rounded-full ${project.status === 'active' ? 'bg-neon-green' :
+                                                }`}
+                                        >
+                                            <div>
+                                                <p className="font-medium text-sm">{project.name}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${project.status === 'active' ? 'bg-neon-green' :
                                                                 project.status === 'review' ? 'bg-yellow-500' :
                                                                     'bg-green-500'
-                                                            }`}
-                                                        style={{ width: `${project.progress}%` }}
-                                                    />
+                                                                }`}
+                                                            style={{ width: `${project.progress || 0}%` }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-xs">{project.progress || 0}%</span>
                                                 </div>
-                                                <span className="text-xs">{project.progress}%</span>
                                             </div>
-                                        </div>
-                                        <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-neon-green' :
+                                            <div className={`w-2 h-2 rounded-full ${project.status === 'active' ? 'bg-neon-green' :
                                                 project.status === 'review' ? 'bg-yellow-500' :
                                                     'bg-green-500'
-                                            }`} />
-                                    </Link>
-                                ))}
+                                                }`} />
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-gray-400 p-3">No projects yet</p>
+                                )}
                             </div>
                         </div>
 
@@ -238,8 +281,8 @@ export default function DashboardLayout({ children }) {
                                     key={item.href}
                                     href={item.href}
                                     className={`flex items-center justify-between p-3 rounded-lg transition-colors ${item.active
-                                            ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green/30'
-                                            : 'hover:bg-white/10'
+                                        ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green/30'
+                                        : 'hover:bg-white/10'
                                         }`}
                                 >
                                     <div className="flex items-center space-x-3">

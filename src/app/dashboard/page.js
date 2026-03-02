@@ -8,79 +8,140 @@ import {
     Star, Target, Zap, BarChart3
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 export default function DashboardPage() {
+    const { user } = useAuth()
+    const supabase = createClient()
     const [stats, setStats] = useState({
-        activeProjects: 3,
-        completedProjects: 12,
-        pendingTasks: 8,
-        storageUsed: '4.2 GB'
+        activeProjects: 0,
+        completedProjects: 0,
+        pendingTasks: 0,
+        storageUsed: '0 GB'
     })
-
     const [recentActivities, setRecentActivities] = useState([])
     const [upcomingMilestones, setUpcomingMilestones] = useState([])
+    const [projects, setProjects] = useState([])
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Mock data
-        setRecentActivities([
-            {
-                id: 1,
-                type: 'file_upload',
-                user: 'Sarah Chen',
-                project: 'E-commerce Platform',
-                time: '2 hours ago',
-                icon: FileText
-            },
-            {
-                id: 2,
-                type: 'message',
-                user: 'Mike Rodriguez',
-                project: 'Mobile Banking App',
-                time: '4 hours ago',
-                icon: MessageSquare
-            },
-            {
-                id: 3,
-                type: 'milestone',
-                user: 'Alex Johnson',
-                project: 'AI Chatbot',
-                time: '1 day ago',
-                icon: Target
-            },
-            {
-                id: 4,
-                type: 'review',
-                user: 'Emma Davis',
-                project: 'Data Dashboard',
-                time: '2 days ago',
-                icon: Star
-            }
-        ])
+        const fetchDashboardData = async () => {
+            if (!user) return
 
-        setUpcomingMilestones([
-            {
-                id: 1,
-                project: 'E-commerce Platform',
-                milestone: 'Payment Integration',
-                dueDate: 'Tomorrow',
-                status: 'pending'
-            },
-            {
-                id: 2,
-                project: 'Mobile Banking App',
-                milestone: 'Security Review',
-                dueDate: 'In 3 days',
-                status: 'in_progress'
-            },
-            {
-                id: 3,
-                project: 'AI Chatbot',
-                milestone: 'Final Deployment',
-                dueDate: 'Next Week',
-                status: 'pending'
+            try {
+                // Fetch user's projects
+                const { data: projectsData, error: projectsError } = await supabase
+                    .from('projects')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+
+                if (!projectsError && projectsData) {
+                    setProjects(projectsData)
+
+                    // Calculate stats
+                    const active = projectsData.filter(p => p.status === 'active').length
+                    const completed = projectsData.filter(p => p.status === 'completed').length
+
+                    setStats({
+                        activeProjects: active,
+                        completedProjects: completed,
+                        pendingTasks: projectsData.reduce((acc, p) => acc + (p.pending_tasks || 0), 0),
+                        storageUsed: '4.2 GB' // You can calculate this from actual storage
+                    })
+                }
+
+                // Fetch recent activities (you'll need an activities table for this)
+                const { data: activitiesData } = await supabase
+                    .from('activities')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
+                    .limit(4)
+
+                if (activitiesData) {
+                    setRecentActivities(activitiesData.map(a => ({
+                        id: a.id,
+                        type: a.type,
+                        user: a.user_name || user.user_metadata?.name,
+                        project: a.project_name,
+                        time: formatTimeAgo(new Date(a.created_at)),
+                        icon: getActivityIcon(a.type)
+                    })))
+                }
+
+                // Fetch upcoming milestones
+                const { data: milestonesData } = await supabase
+                    .from('milestones')
+                    .select('*, projects(name)')
+                    .eq('user_id', user.id)
+                    .eq('status', 'pending')
+                    .order('due_date', { ascending: true })
+                    .limit(3)
+
+                if (milestonesData) {
+                    setUpcomingMilestones(milestonesData.map(m => ({
+                        id: m.id,
+                        project: m.projects?.name || 'Unknown Project',
+                        milestone: m.title,
+                        dueDate: formatDueDate(m.due_date),
+                        status: m.status
+                    })))
+                }
+
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error)
+            } finally {
+                setLoading(false)
             }
-        ])
-    }, [])
+        }
+
+        fetchDashboardData()
+    }, [user, supabase])
+
+    const formatTimeAgo = (date) => {
+        const seconds = Math.floor((new Date() - date) / 1000)
+        if (seconds < 60) return 'just now'
+        const minutes = Math.floor(seconds / 60)
+        if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+        const hours = Math.floor(minutes / 60)
+        if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+        const days = Math.floor(hours / 24)
+        return `${days} day${days > 1 ? 's' : ''} ago`
+    }
+
+    const formatDueDate = (date) => {
+        if (!date) return 'No deadline'
+        const today = new Date()
+        const dueDate = new Date(date)
+        const diffTime = dueDate - today
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        if (diffDays < 0) return 'Overdue'
+        if (diffDays === 0) return 'Today'
+        if (diffDays === 1) return 'Tomorrow'
+        if (diffDays < 7) return `In ${diffDays} days`
+        return dueDate.toLocaleDateString()
+    }
+
+    const getActivityIcon = (type) => {
+        switch (type) {
+            case 'file_upload': return FileText
+            case 'message': return MessageSquare
+            case 'milestone': return Target
+            case 'review': return Star
+            default: return FileText
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="w-12 h-12 border-4 border-neon-green border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-8">
@@ -88,15 +149,20 @@ export default function DashboardPage() {
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold mb-2">Welcome back, John! 👋</h1>
+                        <h1 className="text-2xl font-bold mb-2">
+                            Welcome back, {user?.user_metadata?.name || user?.email}! 👋
+                        </h1>
                         <p className="text-gray-400">
-                            Here's what's happening with your projects today.
+                            Here&apos;s what&apos;s happening with your projects today.
                         </p>
                     </div>
                     <div className="flex gap-4 mt-4 md:mt-0">
-                        <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity">
+                        <Link
+                            href="/dashboard/projects/new"
+                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity"
+                        >
                             New Project
-                        </button>
+                        </Link>
                         <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
                             Quick Tour
                         </button>
@@ -178,80 +244,66 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {[
-                            {
-                                name: 'E-commerce Platform',
-                                progress: 75,
-                                deadline: 'Dec 15, 2024',
-                                team: 4,
-                                status: 'active'
-                            },
-                            {
-                                name: 'Mobile Banking App',
-                                progress: 45,
-                                deadline: 'Jan 20, 2025',
-                                team: 6,
-                                status: 'active'
-                            },
-                            {
-                                name: 'AI Chatbot',
-                                progress: 90,
-                                deadline: 'Dec 5, 2024',
-                                team: 3,
-                                status: 'review'
-                            },
-                            {
-                                name: 'Data Dashboard',
-                                progress: 100,
-                                deadline: 'Completed',
-                                team: 2,
-                                status: 'completed'
-                            }
-                        ].map((project, index) => (
-                            <div key={index} className="p-4 rounded-lg bg-white/5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="font-medium">{project.name}</h3>
-                                    <span className={`px-2 py-1 rounded-full text-xs ${project.status === 'active' ? 'bg-neon-green/20 text-neon-green' :
-                                            project.status === 'review' ? 'bg-yellow-500/20 text-yellow-500' :
-                                                'bg-green-500/20 text-green-500'
-                                        }`}>
-                                        {project.status}
-                                    </span>
-                                </div>
-
-                                <div className="mb-3">
-                                    <div className="flex items-center justify-between text-sm text-gray-400 mb-1">
-                                        <span>Progress</span>
-                                        <span>{project.progress}%</span>
-                                    </div>
-                                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full rounded-full ${project.status === 'active' ? 'bg-neon-green' :
-                                                    project.status === 'review' ? 'bg-yellow-500' :
-                                                        'bg-green-500'
-                                                }`}
-                                            style={{ width: `${project.progress}%` }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between text-sm text-gray-400">
-                                    <div className="flex items-center gap-4">
-                                        <span className="flex items-center gap-1">
-                                            <Users className="w-4 h-4" />
-                                            {project.team}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="w-4 h-4" />
-                                            {project.deadline}
+                        {projects.length > 0 ? (
+                            projects.slice(0, 4).map((project) => (
+                                <div key={project.id} className="p-4 rounded-lg bg-white/5">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-medium">{project.name}</h3>
+                                        <span className={`px-2 py-1 rounded-full text-xs ${project.status === 'active' ? 'bg-neon-green/20 text-neon-green' :
+                                                project.status === 'review' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                    'bg-green-500/20 text-green-500'
+                                            }`}>
+                                            {project.status}
                                         </span>
                                     </div>
-                                    <button className="text-neon-green hover:underline text-sm">
-                                        View Details
-                                    </button>
+
+                                    <div className="mb-3">
+                                        <div className="flex items-center justify-between text-sm text-gray-400 mb-1">
+                                            <span>Progress</span>
+                                            <span>{project.progress || 0}%</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full ${project.status === 'active' ? 'bg-neon-green' :
+                                                        project.status === 'review' ? 'bg-yellow-500' :
+                                                            'bg-green-500'
+                                                    }`}
+                                                style={{ width: `${project.progress || 0}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm text-gray-400">
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex items-center gap-1">
+                                                <Users className="w-4 h-4" />
+                                                {project.team_size || 1}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-4 h-4" />
+                                                {project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}
+                                            </span>
+                                        </div>
+                                        <Link
+                                            href={`/dashboard/projects/${project.id}`}
+                                            className="text-neon-green hover:underline text-sm"
+                                        >
+                                            View Details
+                                        </Link>
+                                    </div>
                                 </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8">
+                                <p className="text-gray-400 mb-4">No projects yet</p>
+                                <Link
+                                    href="/dashboard/projects/new"
+                                    className="text-neon-green hover:underline"
+                                >
+                                    Create your first project
+                                </Link>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
 
@@ -267,24 +319,28 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="space-y-4">
-                            {recentActivities.map((activity) => {
-                                const Icon = activity.icon
-                                return (
-                                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
-                                        <div className="p-2 rounded-lg bg-white/10">
-                                            <Icon className="w-4 h-4" />
+                            {recentActivities.length > 0 ? (
+                                recentActivities.map((activity) => {
+                                    const Icon = activity.icon
+                                    return (
+                                        <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors">
+                                            <div className="p-2 rounded-lg bg-white/10">
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm">
+                                                    <span className="font-medium">{activity.user}</span>
+                                                    {' '}added a {activity.type} to{' '}
+                                                    <span className="font-medium">{activity.project}</span>
+                                                </p>
+                                                <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm">
-                                                <span className="font-medium">{activity.user}</span>
-                                                {' '}added a {activity.type} to{' '}
-                                                <span className="font-medium">{activity.project}</span>
-                                            </p>
-                                            <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })
+                            ) : (
+                                <p className="text-gray-400 text-center py-4">No recent activity</p>
+                            )}
                         </div>
                     </div>
 
@@ -301,25 +357,29 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="space-y-4">
-                            {upcomingMilestones.map((milestone) => (
-                                <div key={milestone.id} className="p-4 rounded-lg bg-white/5">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h3 className="font-medium">{milestone.milestone}</h3>
-                                        <span className={`px-2 py-1 rounded-full text-xs ${milestone.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
-                                                'bg-neon-green/20 text-neon-green'
-                                            }`}>
-                                            {milestone.status === 'pending' ? 'Pending Approval' : 'In Progress'}
-                                        </span>
+                            {upcomingMilestones.length > 0 ? (
+                                upcomingMilestones.map((milestone) => (
+                                    <div key={milestone.id} className="p-4 rounded-lg bg-white/5">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="font-medium">{milestone.milestone}</h3>
+                                            <span className={`px-2 py-1 rounded-full text-xs ${milestone.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                    'bg-neon-green/20 text-neon-green'
+                                                }`}>
+                                                {milestone.status === 'pending' ? 'Pending Approval' : 'In Progress'}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-400 mb-3">{milestone.project}</p>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-gray-400">Due: {milestone.dueDate}</span>
+                                            <button className="px-3 py-1 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark text-xs font-semibold hover:opacity-90 transition-opacity">
+                                                Review
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-gray-400 mb-3">{milestone.project}</p>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-gray-400">Due: {milestone.dueDate}</span>
-                                        <button className="px-3 py-1 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark text-xs font-semibold hover:opacity-90 transition-opacity">
-                                            Review
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <p className="text-gray-400 text-center py-4">No upcoming milestones</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -406,11 +466,11 @@ export default function DashboardPage() {
                     </div>
                     <div className="space-y-4">
                         <div className="p-3 rounded-lg bg-white/5">
-                            <p className="text-sm italic mb-2">"Great progress on the payment integration! The documentation is clear."</p>
+                            <p className="text-sm italic mb-2">&quot;Great progress on the payment integration! The documentation is clear.&quot;</p>
                             <p className="text-xs text-gray-400 text-right">- Sarah, Developer</p>
                         </div>
                         <div className="p-3 rounded-lg bg-white/5">
-                            <p className="text-sm italic mb-2">"Security review completed successfully. Ready for next phase."</p>
+                            <p className="text-sm italic mb-2">&quot;Security review completed successfully. Ready for next phase.&quot;</p>
                             <p className="text-xs text-gray-400 text-right">- Mike, Security Lead</p>
                         </div>
                     </div>

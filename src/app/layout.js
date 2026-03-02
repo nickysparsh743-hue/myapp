@@ -4,6 +4,8 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ChatWidget from './components/ChatWidget'
 import AIAssistant from './components/AIAssistant'
+import { AuthProvider } from '@/contexts/AuthContext' // IMPORTANT: Add this import
+
 const inter = Inter({ subsets: ['latin'] })
 const poppins = Poppins({
   subsets: ['latin'],
@@ -23,7 +25,6 @@ export const metadata = {
   },
 }
 
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.className} ${poppins.variable} scroll-smooth`}>
@@ -34,13 +35,16 @@ export default function RootLayout({ children }) {
       </head>
 
       <body className="bg-dark text-white">
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <AIAssistant />
-          <ChatWidget />
-          <Footer />
-        </div>
+        {/* CRITICAL: AuthProvider must wrap everything that uses authentication */}
+        <AuthProvider>
+          <div className="min-h-screen flex flex-col">
+            <Navbar /> {/* Navbar uses useAuth() */}
+            <main className="flex-grow">{children}</main> {/* Pages use useAuth() */}
+            <AIAssistant />
+            <ChatWidget />
+            <Footer />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )

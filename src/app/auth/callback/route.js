@@ -2,28 +2,33 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-export async function POST(request) {
-    try {
-        const { newPassword } = await request.json()
+export async function GET(request) {
+    const requestUrl = new URL(request.url)
+    const code = requestUrl.searchParams.get('code')
+    const type = requestUrl.searchParams.get('type') // 'recovery' or 'signup'
 
-        const cookieStore = cookies()
+    if (code) {
+        const cookieStore = await cookies()
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
             {
                 cookies: {
-                    get(name) {
+                    async get(name) {
+                        const cookieStore = await cookies()
                         return cookieStore.get(name)?.value
                     },
-                    set(name, value, options) {
+                    async set(name, value, options) {
                         try {
+                            const cookieStore = await cookies()
                             cookieStore.set({ name, value, ...options })
                         } catch (error) {
                             // Handle cookie error
                         }
                     },
-                    remove(name, options) {
+                    async remove(name, options) {
                         try {
+                            const cookieStore = await cookies()
                             cookieStore.set({ name, value: '', ...options })
                         } catch (error) {
                             // Handle cookie error
@@ -33,27 +38,13 @@ export async function POST(request) {
             }
         )
 
-        // Update password
-        const { error } = await supabase.auth.updateUser({
-            password: newPassword
-        })
-
-        if (error) {
-            return NextResponse.json(
-                { success: false, error: error.message },
-                { status: 400 }
-            )
-        }
-
-        return NextResponse.json(
-            { success: true, message: 'Password updated successfully' },
-            { status: 200 }
-        )
-    } catch (error) {
-        console.error('Reset password API error:', error)
-        return NextResponse.json(
-            { success: false, error: 'Internal server error' },
-            { status: 500 }
-        )
+        await supabase.auth.exchangeCodeForSession(code)
     }
+
+    // Redirect based on type
+    if (type === 'recovery') {
+        return NextResponse.redirect(requestUrl.origin + '/account/reset-password')
+    }
+
+    return NextResponse.redirect(requestUrl.origin + '/dashboard')
 }
