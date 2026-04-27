@@ -152,10 +152,6 @@ const TestimonialSlider = () => {
         return () => clearInterval(interval)
     }, [isPlaying, isHovered, filteredTestimonials.length])
 
-    // Reset current index when filter changes
-    useEffect(() => {
-        setCurrentIndex(0)
-    }, [activeFilter])
 
     const handleNext = () => {
         setDirection('next')
@@ -213,7 +209,7 @@ const TestimonialSlider = () => {
                     </h2>
 
                     <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                        Discover how we've helped businesses across Africa achieve remarkable results through innovative technology solutions
+                        Discover how we&apos;ve helped businesses across Africa achieve remarkable results through innovative technology solutions
                     </p>
                 </div>
 
@@ -250,7 +246,10 @@ const TestimonialSlider = () => {
                     {categories.map((category) => (
                         <button
                             key={category.id}
-                            onClick={() => setActiveFilter(category.id)}
+                            onClick={() => {
+                                setActiveFilter(category.id)
+                                setCurrentIndex(0)
+                            }}
                             className={`group relative px-6 py-3 rounded-full font-medium transition-all duration-300 ${activeFilter === category.id
                                 ? 'bg-gradient-to-r from-neon-green to-neon-blue text-white shadow-lg scale-105'
                                 : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
@@ -329,7 +328,7 @@ const TestimonialSlider = () => {
                                                     <div className="flex items-start gap-4 mb-6">
                                                         <div className="relative">
                                                             <div className={`absolute inset-0 bg-gradient-to-r ${getCategoryGradient(testimonial.category)} rounded-full blur-md opacity-50 group-hover/card:opacity-75 transition-opacity`} />
-                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                                             <img
                                                                 src={testimonial.image}
                                                                 alt={testimonial.name}
