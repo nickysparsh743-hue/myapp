@@ -220,7 +220,7 @@ const Navbar = () => {
 
                                     {/* Profile Settings */}
                                     <Link
-                                        href="/profile"
+                                        href="/dashboard/profile"
                                         onClick={() => {
                                             setProfileDropdownOpen(false)
                                             setAccountDropdownOpen(false)

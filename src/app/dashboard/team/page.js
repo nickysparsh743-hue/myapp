@@ -7,8 +7,12 @@ import {
     MessageSquare, Video, Star, Edit, Trash2,
     Globe, Lock, Award, CheckCircle, XCircle
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 export default function TeamPage() {
+    const { user } = useAuth()
+    const supabase = createClient()
     const [members, setMembers] = useState([
         {
             id: 1,
@@ -19,9 +23,9 @@ export default function TeamPage() {
             avatar: '👩‍💻',
             status: 'active',
             permissions: 'admin',
-            projects: 5,
-            joined: 'Jan 15, 2023',
-            skills: ['React', 'Node.js', 'AWS', 'Python'],
+            projects: 12,
+            joined: 'Jan 15, 2022',
+            skills: ['React', 'Node.js', 'Python', 'AWS'],
             performance: 95
         },
         {
@@ -30,12 +34,12 @@ export default function TeamPage() {
             role: 'Security Lead',
             email: 'mike@algo-x.com',
             phone: '+254 723 456 789',
-            avatar: '👨‍💼',
+            avatar: '🧑‍💼',
             status: 'active',
             permissions: 'manager',
-            projects: 3,
-            joined: 'Mar 22, 2023',
-            skills: ['Cybersecurity', 'Pen Testing', 'Compliance', 'Firewalls'],
+            projects: 9,
+            joined: 'Mar 20, 2022',
+            skills: ['Cybersecurity', 'Encryption', 'Penetration Testing', 'Compliance'],
             performance: 92
         },
         {
@@ -44,10 +48,10 @@ export default function TeamPage() {
             role: 'AI Specialist',
             email: 'alex@algo-x.com',
             phone: '+254 734 567 890',
-            avatar: '👨‍🔬',
+            avatar: '👨‍💻',
             status: 'active',
             permissions: 'developer',
-            projects: 4,
+            projects: 7,
             joined: 'Feb 10, 2023',
             skills: ['Machine Learning', 'TensorFlow', 'Python', 'Data Science'],
             performance: 88
@@ -95,9 +99,10 @@ export default function TeamPage() {
             performance: 85
         }
     ])
-
-    const [filter, setFilter] = useState('all')
+    const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [filterRole, setFilterRole] = useState('all')
+    const [filter, setFilter] = useState('all')
 
     const filteredMembers = members.filter(member => {
         if (filter !== 'all' && member.status !== filter) return false

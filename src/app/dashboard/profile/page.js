@@ -8,11 +8,14 @@ import {
   Edit, Save, Camera, X, Check,
   Linkedin, Twitter, Github, Globe as GlobeIcon,
   Award, Briefcase, BookOpen, Star,
-  FileText, Users, BarChart, Target, Plus
+  FileText, Users, BarChart, Target, Plus,
+  Clock, Moon, Sun, Languages, Map,
+  TrendingUp, Activity, Zap, Cpu
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth()
@@ -22,42 +25,27 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [successMessage, setSuccessMessage] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
 
+  // Data from various tables
   const [skills, setSkills] = useState([])
   const [experience, setExperience] = useState([])
   const [education, setEducation] = useState([])
   const [certifications, setCertifications] = useState([])
+  const [projects, setProjects] = useState([])
+  const [activities, setActivities] = useState([])
   const [sessions, setSessions] = useState([])
+  const [notificationPrefs, setNotificationPrefs] = useState(null)
+  const [privacySettings, setPrivacySettings] = useState(null)
+
+  // Stats
   const [stats, setStats] = useState({
     projectsCompleted: 0,
     activeProjects: 0,
-    teamMembers: 0,
-    satisfactionRate: 0
-  })
-
-  const [isEditing, setIsEditing] = useState(false)
-  const [editedProfile, setEditedProfile] = useState({})
-  const [newSkill, setNewSkill] = useState('')
-  const [newSkillType, setNewSkillType] = useState('technical')
-  const [activeTab, setActiveTab] = useState('overview')
-
-  // Notification preferences
-  const [notificationPrefs, setNotificationPrefs] = useState({
-    email_notifications: true,
-    push_notifications: true,
-    project_updates: true,
-    team_messages: true,
-    weekly_reports: true,
-    marketing_emails: false
-  })
-
-  // Privacy settings
-  const [privacySettings, setPrivacySettings] = useState({
-    profile_visibility: 'public',
-    activity_status: true,
-    data_sharing: 'limited',
-    contact_info_visibility: 'team_only'
+    totalSkills: 0,
+    yearsOfExperience: 0,
+    loginCount: 0,
+    lastActive: null
   })
 
   // Redirect if not authenticated
@@ -76,7 +64,7 @@ export default function ProfilePage() {
         setLoading(true)
         setError(null)
 
-        // Fetch profile from database
+        // 1. Fetch profile from database
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -87,7 +75,7 @@ export default function ProfilePage() {
           console.error('Error fetching profile:', profileError)
         }
 
-        // Fetch user's skills
+        // 2. Fetch user's skills
         const { data: skillsData, error: skillsError } = await supabase
           .from('skills')
           .select('*')
@@ -98,7 +86,7 @@ export default function ProfilePage() {
           setSkills(skillsData)
         }
 
-        // Fetch user's experience
+        // 3. Fetch user's experience
         const { data: experienceData, error: experienceError } = await supabase
           .from('experience')
           .select('*')
@@ -109,7 +97,7 @@ export default function ProfilePage() {
           setExperience(experienceData)
         }
 
-        // Fetch user's education
+        // 4. Fetch user's education
         const { data: educationData, error: educationError } = await supabase
           .from('education')
           .select('*')
@@ -120,7 +108,7 @@ export default function ProfilePage() {
           setEducation(educationData)
         }
 
-        // Fetch user's certifications
+        // 5. Fetch user's certifications
         const { data: certsData, error: certsError } = await supabase
           .from('certifications')
           .select('*')
@@ -131,7 +119,30 @@ export default function ProfilePage() {
           setCertifications(certsData)
         }
 
-        // Fetch user's sessions
+        // 6. Fetch user's projects
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (!projectsError && projectsData) {
+          setProjects(projectsData)
+        }
+
+        // 7. Fetch recent activities
+        const { data: activitiesData, error: activitiesError } = await supabase
+          .from('activities')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (!activitiesError && activitiesData) {
+          setActivities(activitiesData)
+        }
+
+        // 8. Fetch user sessions
         const { data: sessionsData, error: sessionsError } = await supabase
           .from('user_sessions')
           .select('*')
@@ -143,30 +154,61 @@ export default function ProfilePage() {
           setSessions(sessionsData)
         }
 
-        // Fetch project stats
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
+        // 9. Fetch notification preferences
+        const { data: notifData, error: notifError } = await supabase
+          .from('notification_preferences')
           .select('*')
           .eq('user_id', user.id)
+          .single()
 
-        if (!projectsError && projectsData) {
-          const active = projectsData.filter(p => p.status === 'active').length
-          const completed = projectsData.filter(p => p.status === 'completed').length
-
-          setStats({
-            projectsCompleted: completed,
-            activeProjects: active,
-            teamMembers: 8, // This would come from a team members table
-            satisfactionRate: 98 // This would come from feedback/reviews
-          })
+        if (!notifError && notifData) {
+          setNotificationPrefs(notifData)
         }
+
+        // 10. Fetch privacy settings
+        const { data: privacyData, error: privacyError } = await supabase
+          .from('privacy_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+
+        if (!privacyError && privacyData) {
+          setPrivacySettings(privacyData)
+        }
+
+        // Calculate stats
+        const active = projectsData?.filter(p => p.status === 'active').length || 0
+        const completed = projectsData?.filter(p => p.status === 'completed').length || 0
+        const totalExp = experienceData?.reduce((total, exp) => {
+          if (exp.current) {
+            const start = new Date(exp.start_date)
+            const now = new Date()
+            const years = now.getFullYear() - start.getFullYear()
+            return total + years
+          } else if (exp.end_date) {
+            const start = new Date(exp.start_date)
+            const end = new Date(exp.end_date)
+            const years = end.getFullYear() - start.getFullYear()
+            return total + years
+          }
+          return total
+        }, 0) || 0
+
+        setStats({
+          projectsCompleted: completed,
+          activeProjects: active,
+          totalSkills: skillsData?.length || 0,
+          yearsOfExperience: Math.round(totalExp),
+          loginCount: profileData?.login_count || 0,
+          lastActive: profileData?.last_active
+        })
 
         // Combine auth user data with profile data
         const combinedProfile = {
           id: user.id,
           name: user.user_metadata?.name || profileData?.name || user.email?.split('@')[0] || 'User',
           email: user.email,
-          role: user.user_metadata?.role || profileData?.role || 'user',
+          role: user.user_metadata?.role || profileData?.role || 'User',
           company: profileData?.company || '',
           phone: profileData?.phone || '',
           location: profileData?.location || '',
@@ -184,12 +226,29 @@ export default function ProfilePage() {
             dribbble: '',
             behance: ''
           },
+          contact_preferences: profileData?.contact_preferences || {
+            team_messages: true,
+            weekly_reports: true,
+            project_updates: true,
+            push_notifications: true,
+            email_notifications: true
+          },
+          privacy_settings: profileData?.privacy_settings || {
+            data_sharing: 'limited',
+            activity_status: true,
+            profile_visibility: 'public',
+            contact_info_visibility: 'team_only'
+          },
           theme: profileData?.theme || 'dark',
           language: profileData?.language || 'en',
           timezone: profileData?.timezone || 'UTC',
           email_verified: profileData?.email_verified || false,
           phone_verified: profileData?.phone_verified || false,
           two_factor_enabled: profileData?.two_factor_enabled || false,
+          two_factor_method: profileData?.two_factor_method || '',
+          last_login: profileData?.last_login,
+          last_active: profileData?.last_active,
+          login_count: profileData?.login_count || 0,
           joinDate: new Date(user.created_at).toLocaleDateString('en-US', {
             month: 'long',
             year: 'numeric',
@@ -197,18 +256,7 @@ export default function ProfilePage() {
           })
         }
 
-        // Set notification preferences if they exist
-        if (profileData?.contact_preferences) {
-          setNotificationPrefs(profileData.contact_preferences)
-        }
-
-        // Set privacy settings if they exist
-        if (profileData?.privacy_settings) {
-          setPrivacySettings(profileData.privacy_settings)
-        }
-
         setProfile(combinedProfile)
-        setEditedProfile(combinedProfile)
 
       } catch (err) {
         console.error('Error in profile fetch:', err)
@@ -221,180 +269,13 @@ export default function ProfilePage() {
     fetchAllUserData()
   }, [user, supabase])
 
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Update profile in database
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: user.id,
-          name: editedProfile.name,
-          company: editedProfile.company,
-          phone: editedProfile.phone,
-          location: editedProfile.location,
-          website: editedProfile.website,
-          bio: editedProfile.bio,
-          avatar: editedProfile.avatar,
-          title: editedProfile.title,
-          department: editedProfile.department,
-          years_of_experience: editedProfile.years_of_experience,
-          social: editedProfile.social,
-          contact_preferences: notificationPrefs,
-          privacy_settings: privacySettings,
-          theme: editedProfile.theme,
-          language: editedProfile.language,
-          timezone: editedProfile.timezone,
-          updated_at: new Date().toISOString()
-        })
-
-      if (updateError) throw updateError
-
-      setProfile(editedProfile)
-      setIsEditing(false)
-      setSuccessMessage('Profile updated successfully!')
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000)
-
-    } catch (err) {
-      console.error('Error saving profile:', err)
-      setError('Failed to save profile. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAvatarUpload = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file')
-      return
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Image size must be less than 2MB')
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Create a unique file name
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true })
-
-      if (uploadError) throw uploadError
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
-
-      setEditedProfile(prev => ({ ...prev, avatar: publicUrl }))
-
-    } catch (err) {
-      console.error('Error uploading avatar:', err)
-      setError('Failed to upload avatar. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addSkill = async () => {
-    if (!newSkill.trim()) return
-
-    try {
-      setError(null)
-
-      const newSkillObj = {
-        user_id: user.id,
-        name: newSkill,
-        level: 50,
-        type: newSkillType,
-        created_at: new Date().toISOString()
-      }
-
-      const { data, error } = await supabase
-        .from('skills')
-        .insert([newSkillObj])
-        .select()
-
-      if (error) throw error
-
-      if (data) {
-        setSkills([...skills, data[0]])
-        setNewSkill('')
-        setNewSkillType('technical')
-      }
-
-    } catch (err) {
-      console.error('Error adding skill:', err)
-      setError('Failed to add skill. It may already exist.')
-    }
-  }
-
-  const removeSkill = async (id) => {
-    try {
-      setError(null)
-
-      const { error } = await supabase
-        .from('skills')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-
-      setSkills(skills.filter(skill => skill.id !== id))
-
-    } catch (err) {
-      console.error('Error removing skill:', err)
-      setError('Failed to remove skill')
-    }
-  }
-
-  const updateSkillLevel = async (id, level) => {
-    try {
-      const { error } = await supabase
-        .from('skills')
-        .update({ level, updated_at: new Date().toISOString() })
-        .eq('id', id)
-
-      if (error) throw error
-
-      setSkills(skills.map(skill =>
-        skill.id === id ? { ...skill, level } : skill
-      ))
-
-    } catch (err) {
-      console.error('Error updating skill level:', err)
-      setError('Failed to update skill')
-    }
-  }
-
-  const handleLogoutSession = async (sessionId) => {
-    try {
-      // This would need a server-side function to invalidate the session
-      console.log('Logging out session:', sessionId)
-
-      // Remove from UI
-      setSessions(sessions.filter(s => s.id !== sessionId))
-
-    } catch (err) {
-      console.error('Error logging out session:', err)
-      setError('Failed to logout session')
+  // Get activity icon
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'project_created': return <Briefcase className="w-4 h-4" />
+      case 'skill_added': return <Zap className="w-4 h-4" />
+      case 'login': return <Activity className="w-4 h-4" />
+      default: return <Activity className="w-4 h-4" />
     }
   }
 
@@ -435,45 +316,28 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Success Message */}
-      {successMessage && (
-        <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-4 rounded-lg flex items-center gap-2">
-          <Check className="w-5 h-5" />
-          <span>{successMessage}</span>
-        </div>
-      )}
-
-      {/* Header */}
+      {/* Header with Settings Link */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">Profile</h1>
-          <p className="text-gray-400">Manage your personal and professional information</p>
+          <p className="text-gray-400">View your personal and professional information</p>
         </div>
         <div className="flex items-center gap-4">
-          <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors flex items-center gap-2">
+          <Link
+            href="/dashboard/settings"
+            className="px-6 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </Link>
+          <button className="px-6 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity flex items-center gap-2">
             <Download className="w-4 h-4" />
             Export Profile
-          </button>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="px-6 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
-          >
-            {isEditing ? (
-              <>
-                <X className="w-4 h-4" />
-                Cancel Edit
-              </>
-            ) : (
-              <>
-                <Edit className="w-4 h-4" />
-                Edit Profile
-              </>
-            )}
           </button>
         </div>
       </div>
 
-      {/* Profile Header */}
+      {/* Profile Header Card */}
       <div className="glass-effect rounded-2xl p-8 border border-white/10">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
           {/* Avatar */}
@@ -485,94 +349,148 @@ export default function ProfilePage() {
                 profile.avatar
               )}
             </div>
-            {isEditing && (
-              <label className="absolute bottom-0 right-0 p-2 rounded-full bg-dark border-2 border-neon-green cursor-pointer hover:bg-neon-green/20 transition-colors">
-                <Camera className="w-5 h-5" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                  disabled={loading}
-                />
-              </label>
-            )}
+            <div className="absolute -bottom-2 -right-2 p-2 rounded-full bg-dark border-2 border-neon-green">
+              {profile.status === 'active' ? (
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+              ) : (
+                <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+              )}
+            </div>
           </div>
 
           {/* User Info */}
           <div className="flex-1">
-            {isEditing ? (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  value={editedProfile.name}
-                  onChange={(e) => setEditedProfile({ ...editedProfile, name: e.target.value })}
-                  className="text-3xl font-bold bg-transparent border-b border-white/10 focus:border-neon-green focus:outline-none w-full"
-                  placeholder="Your name"
-                />
-                <input
-                  type="text"
-                  value={editedProfile.role}
-                  onChange={(e) => setEditedProfile({ ...editedProfile, role: e.target.value })}
-                  className="text-xl text-neon-green bg-transparent border-b border-white/10 focus:border-neon-green focus:outline-none w-full"
-                  placeholder="Your role"
-                />
-                <textarea
-                  value={editedProfile.bio}
-                  onChange={(e) => setEditedProfile({ ...editedProfile, bio: e.target.value })}
-                  rows="3"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg p-3 focus:border-neon-green focus:outline-none resize-none"
-                  placeholder="Tell us about yourself"
-                />
-              </div>
-            ) : (
-              <div>
-                <h2 className="text-3xl font-bold mb-2">{profile.name}</h2>
-                <p className="text-xl text-neon-green mb-4">{profile.role}</p>
-                <p className="text-gray-300 mb-6 max-w-2xl">{profile.bio || 'No bio added yet.'}</p>
-                <div className="flex flex-wrap gap-4">
-                  <span className="px-3 py-1 rounded-full bg-neon-green/20 text-neon-green text-sm">
-                    {profile.status}
-                  </span>
-                  <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    Member since {profile.joinDate}
-                  </span>
-                  {profile.email_verified && (
-                    <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm flex items-center gap-1">
-                      <Check className="w-3 h-3" />
-                      Email Verified
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-4 mb-2">
+              <h2 className="text-3xl font-bold">{profile.name}</h2>
+              {profile.email_verified && (
+                <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Verified
+                </span>
+              )}
+              {profile.two_factor_enabled && (
+                <span className="px-3 py-1 rounded-full bg-neon-green/20 text-neon-green text-sm flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  2FA Enabled
+                </span>
+              )}
+            </div>
+            <p className="text-xl text-neon-green mb-2">{profile.title || profile.role}</p>
+            <p className="text-gray-300 mb-4 max-w-2xl">{profile.bio || 'No bio added yet.'}</p>
+
+            <div className="flex flex-wrap gap-4">
+              <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Member since {profile.joinDate}
+              </span>
+              {profile.department && (
+                <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
+                  <Building className="w-3 h-3" />
+                  {profile.department}
+                </span>
+              )}
+              {profile.location && (
+                <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {profile.location}
+                </span>
+              )}
+              <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                {profile.timezone}
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/10 text-sm flex items-center gap-1">
+                <Languages className="w-3 h-3" />
+                {profile.language === 'en' ? 'English' : profile.language}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="glass-effect rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-neon-green/20">
+              <Briefcase className="w-6 h-6 text-neon-green" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.projectsCompleted}</p>
+              <p className="text-sm text-gray-400">Projects Completed</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-effect rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-neon-blue/20">
+              <Activity className="w-6 h-6 text-neon-blue" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.activeProjects}</p>
+              <p className="text-sm text-gray-400">Active Projects</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-effect rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-purple-500/20">
+              <Zap className="w-6 h-6 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.totalSkills}</p>
+              <p className="text-sm text-gray-400">Skills</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-effect rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-orange-500/20">
+              <Clock className="w-6 h-6 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{stats.yearsOfExperience}+</p>
+              <p className="text-sm text-gray-400">Years Experience</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="glass-effect rounded-2xl p-4 border border-white/10">
-        <div className="flex overflow-x-auto">
-          {['overview', 'experience', 'skills', 'settings', 'security'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 rounded-lg transition-colors whitespace-nowrap ${activeTab === tab
-                ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold'
-                : 'hover:bg-white/10'
-                }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
+        <div className="flex overflow-x-auto gap-2">
+          {[
+            { id: 'overview', label: 'Overview', icon: User },
+            { id: 'experience', label: 'Experience', icon: Briefcase },
+            { id: 'skills', label: 'Skills', icon: Zap },
+            { id: 'projects', label: 'Projects', icon: Target },
+            { id: 'activity', label: 'Activity', icon: Activity }
+          ].map((tab) => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-3 rounded-lg transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id
+                  ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold'
+                  : 'hover:bg-white/10'
+                  }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
+          {/* Left Column - Personal Info */}
           <div className="lg:col-span-2 space-y-8">
             {/* Personal Information */}
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
@@ -582,383 +500,246 @@ export default function ProfilePage() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {isEditing ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Email</label>
-                      <input
-                        type="email"
-                        value={editedProfile.email}
-                        disabled
-                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 opacity-50 cursor-not-allowed"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Phone</label>
-                      <input
-                        type="tel"
-                        value={editedProfile.phone}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, phone: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Company</label>
-                      <input
-                        type="text"
-                        value={editedProfile.company}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, company: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                        placeholder="Your company"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Location</label>
-                      <input
-                        type="text"
-                        value={editedProfile.location}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, location: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                        placeholder="City, Country"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-2">Website</label>
-                      <input
-                        type="url"
-                        value={editedProfile.website}
-                        onChange={(e) => setEditedProfile({ ...editedProfile, website: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                        placeholder="https://example.com"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <Mail className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Email</p>
-                        <p className="font-medium">{profile.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <Phone className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Phone</p>
-                        <p className="font-medium">{profile.phone || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <Building className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Company</p>
-                        <p className="font-medium">{profile.company || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <MapPin className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Location</p>
-                        <p className="font-medium">{profile.location || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <GlobeIcon className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Website</p>
-                        <p className="font-medium">{profile.website || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                      <Calendar className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-400">Member Since</p>
-                        <p className="font-medium">{profile.joinDate}</p>
-                      </div>
-                    </div>
-                  </>
-                )}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <Mail className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Email</p>
+                    <p className="font-medium">{profile.email}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <Phone className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Phone</p>
+                    <p className="font-medium">{profile.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <Building className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Company</p>
+                    <p className="font-medium">{profile.company || 'Not provided'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <MapPin className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Location</p>
+                    <p className="font-medium">{profile.location || 'Not provided'}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <GlobeIcon className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Website</p>
+                    <p className="font-medium">
+                      {profile.website ? (
+                        <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-neon-green hover:underline">
+                          {profile.website}
+                        </a>
+                      ) : 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
+                  <Calendar className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Member Since</p>
+                    <p className="font-medium">{profile.joinDate}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Social Links */}
               <div className="mt-6 pt-6 border-t border-white/10">
                 <h4 className="text-lg font-bold mb-4">Social Links</h4>
                 <div className="flex gap-4">
-                  <a
-                    href={profile.social?.linkedin || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 rounded-lg bg-[#0077B5]/20 hover:bg-[#0077B5]/30 transition-colors"
-                  >
-                    <Linkedin className="w-5 h-5 text-[#0077B5]" />
-                  </a>
-                  <a
-                    href={profile.social?.twitter || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 rounded-lg bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 transition-colors"
-                  >
-                    <Twitter className="w-5 h-5 text-[#1DA1F2]" />
-                  </a>
-                  <a
-                    href={profile.social?.github || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 rounded-lg bg-[#333]/20 hover:bg-[#333]/30 transition-colors"
-                  >
-                    <Github className="w-5 h-5" />
-                  </a>
+                  {profile.social?.linkedin && (
+                    <a
+                      href={profile.social.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3 rounded-lg bg-[#0077B5]/20 hover:bg-[#0077B5]/30 transition-colors"
+                    >
+                      <Linkedin className="w-5 h-5 text-[#0077B5]" />
+                    </a>
+                  )}
+                  {profile.social?.twitter && (
+                    <a
+                      href={profile.social.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3 rounded-lg bg-[#1DA1F2]/20 hover:bg-[#1DA1F2]/30 transition-colors"
+                    >
+                      <Twitter className="w-5 h-5 text-[#1DA1F2]" />
+                    </a>
+                  )}
+                  {profile.social?.github && (
+                    <a
+                      href={profile.social.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3 rounded-lg bg-[#333]/20 hover:bg-[#333]/30 transition-colors"
+                    >
+                      <Github className="w-5 h-5" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Experience */}
+            {/* Recent Experience */}
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-neon-green" />
-                  Work Experience
+                  Recent Experience
                 </h3>
-                {isEditing && (
-                  <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors text-sm">
-                    Add Experience
-                  </button>
-                )}
+                <Link href="/dashboard/profile?tab=experience" className="text-neon-green hover:underline text-sm">
+                  View All
+                </Link>
               </div>
 
-              <div className="space-y-6">
-                {experience.length > 0 ? (
-                  experience.map((exp) => (
-                    <div key={exp.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold text-lg mb-1">{exp.role}</h4>
-                          <p className="text-neon-green mb-2">{exp.company}</p>
-                          <p className="text-sm text-gray-400 mb-3">
-                            {new Date(exp.start_date).getFullYear()} - {exp.current ? 'Present' : new Date(exp.end_date).getFullYear()}
-                          </p>
-                          <p className="text-gray-300">{exp.description}</p>
-                        </div>
-                        {isEditing && (
-                          <button className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
+              <div className="space-y-4">
+                {experience.slice(0, 2).map((exp) => (
+                  <div key={exp.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h4 className="font-bold text-lg mb-1">{exp.role}</h4>
+                        <p className="text-neon-green mb-2">{exp.company}</p>
+                        <p className="text-sm text-gray-400 mb-2">
+                          {new Date(exp.start_date).getFullYear()} - {exp.current ? 'Present' : new Date(exp.end_date).getFullYear()}
+                        </p>
+                        <p className="text-gray-300 line-clamp-2">{exp.description}</p>
                       </div>
                     </div>
-                  ))
-                ) : (
+                  </div>
+                ))}
+                {experience.length === 0 && (
                   <p className="text-gray-400 text-center py-4">No experience added yet</p>
                 )}
               </div>
             </div>
 
-            {/* Education */}
+            {/* Privacy & Preferences Summary */}
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-neon-green" />
-                  Education
-                </h3>
-                {isEditing && (
-                  <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors text-sm">
-                    Add Education
-                  </button>
-                )}
-              </div>
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-neon-green" />
+                Privacy & Preferences
+              </h3>
 
-              <div className="space-y-6">
-                {education.length > 0 ? (
-                  education.map((edu) => (
-                    <div key={edu.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold text-lg mb-1">{edu.degree}</h4>
-                          <p className="text-neon-green mb-2">{edu.institution}</p>
-                          <p className="text-sm text-gray-400 mb-3">
-                            {new Date(edu.start_date).getFullYear()} - {edu.current ? 'Present' : new Date(edu.end_date).getFullYear()}
-                          </p>
-                          {edu.field_of_study && (
-                            <p className="text-gray-300">{edu.field_of_study}</p>
-                          )}
-                        </div>
-                        {isEditing && (
-                          <button className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-400 text-center py-4">No education added yet</p>
-                )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400 mb-1">Profile Visibility</p>
+                  <p className="font-medium capitalize">{profile.privacy_settings.profile_visibility}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400 mb-1">Activity Status</p>
+                  <p className="font-medium">{profile.privacy_settings.activity_status ? 'Visible' : 'Hidden'}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400 mb-1">Data Sharing</p>
+                  <p className="font-medium capitalize">{profile.privacy_settings.data_sharing}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-white/5">
+                  <p className="text-sm text-gray-400 mb-1">Two-Factor Auth</p>
+                  <p className="font-medium">{profile.two_factor_enabled ? 'Enabled' : 'Disabled'}</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Right Column */}
           <div className="space-y-8">
-            {/* Stats */}
+            {/* Quick Stats */}
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold mb-6">Profile Stats</h3>
-              <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-white/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Projects Completed</span>
-                    <span className="font-bold text-2xl">{stats.projectsCompleted}</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-neon-green rounded-full" style={{ width: '100%' }} />
-                  </div>
+              <h3 className="text-xl font-bold mb-4">Quick Stats</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <span className="text-gray-400">Login Count</span>
+                  <span className="font-bold">{stats.loginCount}</span>
                 </div>
-
-                <div className="p-4 rounded-lg bg-white/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Active Projects</span>
-                    <span className="font-bold text-2xl">{stats.activeProjects}</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-neon-blue rounded-full" style={{ width: `${(stats.activeProjects / 10) * 100}%` }} />
-                  </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <span className="text-gray-400">Last Active</span>
+                  <span className="font-bold">
+                    {stats.lastActive ? new Date(stats.lastActive).toLocaleDateString() : 'Today'}
+                  </span>
                 </div>
-
-                <div className="p-4 rounded-lg bg-white/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Team Members</span>
-                    <span className="font-bold text-2xl">{stats.teamMembers}</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 rounded-full" style={{ width: '80%' }} />
-                  </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <span className="text-gray-400">Active Sessions</span>
+                  <span className="font-bold">{sessions.filter(s => s.is_current).length}</span>
                 </div>
-
-                <div className="p-4 rounded-lg bg-white/5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-400">Satisfaction Rate</span>
-                    <span className="font-bold text-2xl">{stats.satisfactionRate}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.satisfactionRate}%` }} />
-                  </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                  <span className="text-gray-400">Certifications</span>
+                  <span className="font-bold">{certifications.length}</span>
                 </div>
               </div>
             </div>
 
-            {/* Skills */}
+            {/* Top Skills */}
             <div className="glass-effect rounded-2xl p-6 border border-white/10">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <Target className="w-5 h-5 text-neon-green" />
-                  Skills & Expertise
-                </h3>
-                {isEditing && (
-                  <button
-                    onClick={addSkill}
-                    className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors text-sm"
-                  >
-                    Add Skill
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {skills.length > 0 ? (
-                  skills.map((skill) => (
-                    <div key={skill.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{skill.name}</span>
-                        {isEditing ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={skill.level}
-                              onChange={(e) => updateSkillLevel(skill.id, parseInt(e.target.value))}
-                              className="w-24"
-                            />
-                            <span className="text-sm w-10">{skill.level}%</span>
-                            <button
-                              onClick={() => removeSkill(skill.id)}
-                              className="p-1 rounded hover:bg-white/10 transition-colors"
-                            >
-                              <X className="w-4 h-4 text-red-400" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-neon-green">{skill.level}%</span>
-                        )}
-                      </div>
-                      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-neon-green to-neon-blue rounded-full transition-all duration-300"
-                          style={{ width: `${skill.level}%` }}
-                        />
-                      </div>
+              <h3 className="text-xl font-bold mb-4">Top Skills</h3>
+              <div className="space-y-3">
+                {skills.slice(0, 5).map((skill) => (
+                  <div key={skill.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm">{skill.name}</span>
+                      <span className="text-xs text-neon-green">{skill.level}%</span>
                     </div>
-                  ))
-                ) : (
+                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-neon-green to-neon-blue rounded-full"
+                        style={{ width: `${skill.level}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {skills.length === 0 && (
                   <p className="text-gray-400 text-center py-4">No skills added yet</p>
                 )}
-
-                {isEditing && (
-                  <div className="flex gap-2 mt-4">
-                    <input
-                      type="text"
-                      value={newSkill}
-                      onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="Add new skill"
-                      className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                      onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                    />
-                    <select
-                      value={newSkillType}
-                      onChange={(e) => setNewSkillType(e.target.value)}
-                      className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                    >
-                      <option value="technical">Technical</option>
-                      <option value="soft">Soft</option>
-                    </select>
-                    <button
-                      onClick={addSkill}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity"
-                    >
-                      Add
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Certifications */}
-            <div className="glass-effect rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <Award className="w-5 h-5 text-neon-green" />
-                Certifications
-              </h3>
-
-              <div className="space-y-4">
-                {certifications.length > 0 ? (
-                  certifications.map((cert) => (
-                    <div key={cert.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold mb-1">{cert.name}</h4>
-                          <p className="text-sm text-gray-400">{cert.issuer}</p>
-                        </div>
-                        <span className="text-sm text-gray-400">{cert.year}</span>
-                      </div>
+            {/* Recent Certifications */}
+            {certifications.length > 0 && (
+              <div className="glass-effect rounded-2xl p-6 border border-white/10">
+                <h3 className="text-xl font-bold mb-4">Recent Certifications</h3>
+                <div className="space-y-3">
+                  {certifications.slice(0, 3).map((cert) => (
+                    <div key={cert.id} className="p-3 rounded-lg bg-white/5">
+                      <p className="font-medium mb-1">{cert.name}</p>
+                      <p className="text-sm text-gray-400">{cert.issuer} • {cert.year}</p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-400 text-center py-4">No certifications added yet</p>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Active Sessions */}
+            {sessions.length > 0 && (
+              <div className="glass-effect rounded-2xl p-6 border border-white/10">
+                <h3 className="text-xl font-bold mb-4">Active Sessions</h3>
+                <div className="space-y-3">
+                  {sessions.filter(s => s.is_current).map((session) => (
+                    <div key={session.id} className="p-3 rounded-lg bg-white/5 flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-white/10">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{session.device || 'Current Device'}</p>
+                        <p className="text-xs text-gray-400">{session.location || 'Current Session'}</p>
+                      </div>
+                      <span className="text-xs text-neon-green">Active Now</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -979,37 +760,17 @@ export default function ProfilePage() {
                         <h4 className="text-xl font-bold mb-1">{exp.role}</h4>
                         <p className="text-neon-green text-lg mb-2">{exp.company}</p>
                         <span className="px-3 py-1 rounded-full bg-white/10 text-sm">
-                          {new Date(exp.start_date).getFullYear()} - {exp.current ? 'Present' : new Date(exp.end_date).getFullYear()}
+                          {new Date(exp.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} -
+                          {exp.current ? ' Present' : ` ${new Date(exp.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
                         </span>
                       </div>
-                      {isEditing && (
-                        <button className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
                     </div>
-                    <p className="text-gray-300 mb-4">{exp.description}</p>
-                    {exp.skills && exp.skills.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {exp.skills.map((skill, idx) => (
-                          <span key={idx} className="px-3 py-1 rounded-full bg-neon-green/20 text-neon-green text-sm">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <p className="text-gray-300 whitespace-pre-line">{exp.description}</p>
                   </div>
                 </div>
               ))
             ) : (
               <p className="text-gray-400 text-center py-8">No experience added yet</p>
-            )}
-
-            {isEditing && (
-              <button className="w-full py-4 rounded-lg border-2 border-dashed border-white/20 hover:border-neon-green hover:bg-neon-green/10 transition-colors flex items-center justify-center gap-2">
-                <Plus className="w-5 h-5" />
-                Add New Experience
-              </button>
             )}
           </div>
         </div>
@@ -1023,7 +784,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Target className="w-5 h-5 text-neon-green" />
+                <Cpu className="w-5 h-5 text-neon-green" />
                 Technical Skills
               </h4>
               <div className="space-y-4">
@@ -1033,7 +794,7 @@ export default function ProfilePage() {
                       <span className="font-medium">{skill.name}</span>
                       <span className="text-neon-green">{skill.level}%</span>
                     </div>
-                    <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-neon-green to-neon-blue rounded-full"
                         style={{ width: `${skill.level}%` }}
@@ -1059,7 +820,7 @@ export default function ProfilePage() {
                       <span className="font-medium">{skill.name}</span>
                       <span className="text-neon-green">{skill.level}%</span>
                     </div>
-                    <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
                         style={{ width: `${skill.level}%` }}
@@ -1073,258 +834,115 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Settings Tab */}
-      {activeTab === 'settings' && (
-        <div className="glass-effect rounded-2xl p-8 border border-white/10">
-          <h3 className="text-2xl font-bold mb-8">Account Settings</h3>
-
-          <div className="space-y-8">
-            {/* Notification Settings */}
-            <div>
+          {/* Certifications */}
+          {certifications.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-white/10">
               <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-neon-green" />
-                Notification Preferences
+                <Award className="w-5 h-5 text-neon-green" />
+                Certifications
               </h4>
-              <div className="space-y-4">
-                {Object.entries(notificationPrefs).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                    <div>
-                      <p className="font-medium">{key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</p>
-                      <p className="text-sm text-gray-400">Receive {key.replace('_', ' ')}</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={value}
-                        onChange={() => setNotificationPrefs({ ...notificationPrefs, [key]: !value })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
-                    </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {certifications.map((cert) => (
+                  <div key={cert.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                    <Award className="w-8 h-8 text-neon-green mb-3" />
+                    <h5 className="font-bold mb-1">{cert.name}</h5>
+                    <p className="text-sm text-gray-400 mb-2">{cert.issuer}</p>
+                    <p className="text-xs text-gray-500">{cert.year}</p>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Privacy Settings */}
-            <div>
-              <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-neon-green" />
-                Privacy Settings
-              </h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                  <div>
-                    <p className="font-medium">Profile Visibility</p>
-                    <p className="text-sm text-gray-400">Who can see your profile</p>
-                  </div>
-                  <select
-                    value={privacySettings.profile_visibility}
-                    onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value })}
-                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  >
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                    <option value="team_only">Team Only</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                  <div>
-                    <p className="font-medium">Activity Status</p>
-                    <p className="text-sm text-gray-400">Show when you&apos;re online</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={privacySettings.activity_status}
-                      onChange={(e) => setPrivacySettings({ ...privacySettings, activity_status: e.target.checked })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                  <div>
-                    <p className="font-medium">Data Sharing</p>
-                    <p className="text-sm text-gray-400">Share analytics data</p>
-                  </div>
-                  <select
-                    value={privacySettings.data_sharing}
-                    onChange={(e) => setPrivacySettings({ ...privacySettings, data_sharing: e.target.value })}
-                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  >
-                    <option value="full">Full</option>
-                    <option value="limited">Limited</option>
-                    <option value="none">None</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                  <div>
-                    <p className="font-medium">Contact Information</p>
-                    <p className="text-sm text-gray-400">Who can see your contact info</p>
-                  </div>
-                  <select
-                    value={privacySettings.contact_info_visibility}
-                    onChange={(e) => setPrivacySettings({ ...privacySettings, contact_info_visibility: e.target.value })}
-                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  >
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                    <option value="team_only">Team Only</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Security Tab */}
-      {activeTab === 'security' && (
+      {/* Projects Tab */}
+      {activeTab === 'projects' && (
         <div className="glass-effect rounded-2xl p-8 border border-white/10">
-          <h3 className="text-2xl font-bold mb-8">Security</h3>
+          <h3 className="text-2xl font-bold mb-8">Projects</h3>
 
-          <div className="space-y-8">
-            {/* Password Change */}
-            <div>
-              <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Lock className="w-5 h-5 text-neon-green" />
-                Change Password
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Current Password</label>
-                  <input
-                    type="password"
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">New Password</label>
-                  <input
-                    type="password"
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Confirm New Password</label>
-                  <input
-                    type="password"
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-neon-green focus:outline-none"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={() => router.push('/account/change-password')}
-                    className="px-6 py-3 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Two-Factor Authentication */}
-            <div>
-              <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-neon-green" />
-                Two-Factor Authentication
-              </h4>
-              <div className="p-6 rounded-lg bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="font-medium">SMS Authentication</p>
-                    <p className="text-sm text-gray-400">Use your phone to receive verification codes</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {projects.length > 0 ? (
+              projects.map((project) => (
+                <div key={project.id} className="p-6 rounded-lg bg-white/5 border border-white/10 hover:border-neon-green/30 transition-colors">
+                  <div className="flex items-start justify-between mb-4">
+                    <h4 className="font-bold text-lg">{project.name}</h4>
+                    <span className={`px-3 py-1 rounded-full text-xs ${project.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                        project.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                      {project.status}
+                    </span>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={profile.two_factor_enabled}
-                      onChange={() => { }} // This would need server-side implementation
-                    />
-                    <div className="w-11 h-6 bg-white/10 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-green"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Authenticator App</p>
-                    <p className="text-sm text-gray-400">Use Google Authenticator or similar</p>
-                  </div>
-                  <button className="px-4 py-2 rounded-lg border border-white/10 hover:border-neon-green hover:bg-neon-green/10 transition-colors">
-                    Set Up
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Sessions */}
-            <div>
-              <h4 className="text-lg font-bold mb-6">Active Sessions</h4>
-              <div className="space-y-4">
-                {sessions.length > 0 ? (
-                  sessions.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white/10">
-                          <Globe className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{session.device || 'Unknown Device'}</p>
-                          <p className="text-sm text-gray-400">
-                            {session.location || 'Unknown Location'} •
-                            {session.is_current ? ' Current session' : ` Last active ${new Date(session.last_active).toLocaleDateString()}`}
-                          </p>
-                        </div>
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{project.description}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between text-sm mb-1">
+                        <span className="text-gray-400">Progress</span>
+                        <span className="text-neon-green">{project.progress}%</span>
                       </div>
-                      {!session.is_current && (
-                        <button
-                          onClick={() => handleLogoutSession(session.id)}
-                          className="px-4 py-2 rounded-lg border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-colors"
-                        >
-                          Log Out
-                        </button>
-                      )}
+                      <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-neon-green to-neon-blue rounded-full"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-gray-400 text-center py-4">No active sessions found</p>
-                )}
-              </div>
-            </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Team Size</span>
+                      <span>{project.team_size} members</span>
+                    </div>
+                    {project.deadline && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Deadline</span>
+                        <span>{new Date(project.deadline).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-400 text-center py-8 col-span-2">No projects yet</p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Save Button for Edit Mode */}
-      {isEditing && (
-        <div className="fixed bottom-8 right-8">
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="px-8 py-4 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-bold hover:opacity-90 transition-opacity shadow-lg flex items-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-dark border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
+      {/* Activity Tab */}
+      {activeTab === 'activity' && (
+        <div className="glass-effect rounded-2xl p-8 border border-white/10">
+          <h3 className="text-2xl font-bold mb-8">Recent Activity</h3>
+
+          <div className="space-y-4">
+            {activities.length > 0 ? (
+              activities.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-4 p-4 rounded-lg bg-white/5 border border-white/10">
+                  <div className="p-2 rounded-lg bg-neon-green/20">
+                    {getActivityIcon(activity.type)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium mb-1">{activity.content}</p>
+                    <p className="text-sm text-gray-400">
+                      {new Date(activity.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))
             ) : (
-              <>
-                <Save className="w-5 h-5" />
-                Save Changes
-              </>
+              <p className="text-gray-400 text-center py-8">No recent activity</p>
             )}
-          </button>
+          </div>
         </div>
       )}
     </div>
   )
 }
+
+// Import Settings icon
+import { Settings } from 'lucide-react'

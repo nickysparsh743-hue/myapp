@@ -1,16 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, Save, Upload, Calendar, Users, 
   DollarSign, Target, CheckCircle, Clock,
-  FileText, Link, Globe, Shield, Zap
+  FileText, Link, Globe, Shield, Zap, Check, Plus, Paperclip, AlertCircle
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
+import { createProject, createMilestone } from '@/lib/dashboard-utils'
 
 export default function NewProjectPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const supabase = createClient()
   const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [teams, setTeams] = useState([])
+  const [teamsLoading, setTeamsLoading] = useState(true)
   const [project, setProject] = useState({
     name: '',
     description: '',
@@ -19,7 +28,7 @@ export default function NewProjectPage() {
     endDate: '',
     budget: '',
     priority: 'medium',
-    teamMembers: [],
+    selectedTeams: [],
     milestones: [
       { id: 1, name: 'Project Kickoff', dueDate: '', completed: false },
       { id: 2, name: 'Design Approval', dueDate: '', completed: false },
@@ -33,22 +42,60 @@ export default function NewProjectPage() {
 
   const categories = [
     'Web Development',
-    'Mobile App',
-    'AI/ML Solution',
-    'Cybersecurity',
+    'Mobile Apps',
+    'AI & ML Solutions',
     'Data Analytics',
-    'Graphics & Design',
-    'Writing & Content',
+    'Cybersecurity',
+    'Bots & Automation',
+    'Graphics & UI/UX',
+    'Writing Services',
+    'Database Services',
     'Other'
   ]
 
-  const teamOptions = [
-    { id: 1, name: 'Sarah Chen', role: 'Lead Developer' },
-    { id: 2, name: 'Mike Rodriguez', role: 'Security Lead' },
-    { id: 3, name: 'Alex Johnson', role: 'AI Specialist' },
-    { id: 4, name: 'Emma Davis', role: 'UX Designer' },
-    { id: 5, name: 'David Wilson', role: 'Project Manager' }
-  ]
+  // Fetch teams on component mount
+  useEffect(() => {
+    fetchTeams()
+  }, [])
+
+  const fetchTeams = async () => {
+    try {
+      setTeamsLoading(true)
+      const { data, error: fetchError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+
+      setTeams(data || [])
+    } catch (err) {
+      console.error('Error fetching teams:', err)
+      setError('Failed to load teams')
+    } finally {
+      setTeamsLoading(false)
+    }
+  }
+
+  // Get teams matching the selected category
+  const getRecommendedTeams = () => {
+    return teams.filter(team => {
+      // Map project category to team specialization
+      const categoryToSpecialization = {
+        'Web Development': 'Web Development',
+        'Mobile Apps': 'Mobile Apps',
+        'AI & ML Solutions': 'AI & ML Solutions',
+        'Data Analytics': 'Data Analytics',
+        'Cybersecurity': 'Cybersecurity',
+        'Bots & Automation': 'Bots & Automation',
+        'Graphics & UI/UX': 'Graphics & UI/UX',
+        'Writing Services': 'Writing Services',
+        'Database Services': 'Database Services'
+      }
+      return team.specialization === categoryToSpecialization[project.category]
+    })
+  }
 
   const handleInputChange = (field, value) => {
     setProject(prev => ({ ...prev, [field]: value }))
@@ -63,14 +110,14 @@ export default function NewProjectPage() {
     }))
   }
 
-  const handleTeamToggle = (memberId) => {
+  const handleTeamToggle = (teamId) => {
     setProject(prev => {
-      const isSelected = prev.teamMembers.includes(memberId)
+      const isSelected = prev.selectedTeams.includes(teamId)
       return {
         ...prev,
-        teamMembers: isSelected
-          ? prev.teamMembers.filter(id => id !== memberId)
-          : [...prev.teamMembers, memberId]
+        selectedTeams: isSelected
+          ? prev.selectedTeams.filter(id => id !== teamId)
+          : [...prev.selectedTeams, teamId]
       }
     })
   }
@@ -95,11 +142,67 @@ export default function NewProjectPage() {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle project creation logic
-    console.log('Creating project:', project)
-    router.push('/dashboard/projects')
+    
+    if (!user) {
+      setError('You must be logged in to create a project')
+      return
+    }
+
+    if (!project.name || !project.category) {
+      setError('Please fill in all required fields')
+      return
+    }
+
+    if (project.selectedTeams.length === 0) {
+      setError('Please select at least one team')
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Create the project in database
+      const newProject = await createProject(user.id, {
+        name: project.name,
+        description: project.description,
+        category: project.category,
+        startDate: project.startDate,
+        deadline: project.endDate,
+        budget: project.budget,
+        priority: project.priority,
+        requirements: project.requirements,
+        team_size: project.selectedTeams.length
+      })
+
+      // Assign teams to the project
+      for (const teamId of project.selectedTeams) {
+        await supabase
+          .from('project_team_assignments')
+          .insert([{
+            project_id: newProject.id,
+            team_id: teamId,
+            role: 'contributor'
+          }])
+      }
+
+      // Create milestones for the project
+      for (const milestone of project.milestones) {
+        if (milestone.dueDate) {
+          await createMilestone(newProject.id, milestone.name, milestone.dueDate)
+        }
+      }
+
+      // Success - redirect to projects
+      router.push('/dashboard/projects')
+    } catch (err) {
+      console.error('Error creating project:', err)
+      setError(err.message || 'Failed to create project')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const nextStep = () => {
@@ -165,6 +268,12 @@ export default function NewProjectPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Error Message */}
+        {error && (
+          <div className="glass-effect rounded-2xl p-4 border border-red-500/30 bg-red-500/10">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
         {/* Step 1: Basic Info */}
         {step === 1 && (
           <div className="glass-effect rounded-2xl p-8 border border-white/10">
@@ -246,47 +355,108 @@ export default function NewProjectPage() {
         {/* Step 2: Team & Budget */}
         {step === 2 && (
           <div className="glass-effect rounded-2xl p-8 border border-white/10">
-            <h2 className="text-2xl font-bold mb-6">Team & Budget</h2>
+            <h2 className="text-2xl font-bold mb-6">Team Assignment & Budget</h2>
             
             <div className="space-y-8">
-              {/* Team Selection */}
+              {/* Teams Selection */}
               <div>
-                <label className="block text-sm font-medium mb-4">Select Team Members</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {teamOptions.map((member) => {
-                    const isSelected = project.teamMembers.includes(member.id)
-                    return (
-                      <div
-                        key={member.id}
-                        onClick={() => handleTeamToggle(member.id)}
-                        className={`p-4 rounded-lg border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
-                            : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-neon-green to-neon-blue flex items-center justify-center">
-                              <Users className="w-5 h-5 text-dark" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{member.name}</p>
-                              <p className="text-sm text-gray-400">{member.role}</p>
-                            </div>
-                          </div>
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                            isSelected
-                              ? 'bg-neon-green border-neon-green'
-                              : 'border-white/20'
-                          }`}>
-                            {isSelected && <Check className="w-3 h-3 text-dark" />}
-                          </div>
+                <label className="block text-sm font-medium mb-4">Select Teams for this Project *</label>
+                
+                {teamsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-neon-green border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : teams.length === 0 ? (
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    No teams available. Please create teams first.
+                  </div>
+                ) : (
+                  <div>
+                    {/* Recommended Teams */}
+                    {project.category && getRecommendedTeams().length > 0 && (
+                      <div className="mb-6">
+                        <p className="text-sm text-gray-400 mb-3">✨ Recommended for {project.category}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {getRecommendedTeams().map((team) => {
+                            const isSelected = project.selectedTeams.includes(team.id)
+                            return (
+                              <div
+                                key={team.id}
+                                onClick={() => handleTeamToggle(team.id)}
+                                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
+                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <p className="font-medium">{team.name}</p>
+                                    <p className="text-sm text-gray-400">{team.specialization}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{team.member_count}/{team.capacity} members</p>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                    isSelected
+                                      ? 'bg-neon-green border-neon-green'
+                                      : 'border-white/20'
+                                  }`}>
+                                    {isSelected && <Check className="w-3 h-3 text-dark" />}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
+                    )}
+
+                    {/* All Teams */}
+                    {teams.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-400 mb-3">All Available Teams</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto">
+                          {teams.map((team) => {
+                            const isSelected = project.selectedTeams.includes(team.id)
+                            return (
+                              <div
+                                key={team.id}
+                                onClick={() => handleTeamToggle(team.id)}
+                                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'border-neon-green bg-gradient-to-r from-neon-green/20 to-neon-blue/20'
+                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <p className="font-medium">{team.name}</p>
+                                    <p className="text-sm text-gray-400">{team.specialization}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{team.member_count}/{team.capacity} members</p>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                                    isSelected
+                                      ? 'bg-neon-green border-neon-green'
+                                      : 'border-white/20'
+                                  }`}>
+                                    {isSelected && <Check className="w-3 h-3 text-dark" />}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {project.selectedTeams.length > 0 && (
+                  <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 flex items-center gap-2">
+                    <Check className="w-5 h-5" />
+                    {project.selectedTeams.length} team{project.selectedTeams.length !== 1 ? 's' : ''} selected
+                  </div>
+                )}
               </div>
 
               {/* Budget & Priority */}
@@ -571,10 +741,11 @@ export default function NewProjectPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-8 py-3 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-bold hover:opacity-90 transition-opacity flex items-center gap-2"
+                      disabled={loading}
+                      className="px-8 py-3 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Save className="w-5 h-5" />
-                      Create Project
+                      {loading ? 'Creating...' : 'Create Project'}
                     </button>
                   </div>
                 </div>

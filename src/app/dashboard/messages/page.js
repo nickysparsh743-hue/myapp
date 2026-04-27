@@ -7,47 +7,22 @@ import {
     Check, CheckCheck, Star, Pin, Archive,
     Trash2, Block, UserPlus, Info
 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useConversations } from '@/lib/hooks/useDashboard'
 
 export default function MessagesPage() {
-    const [conversations, setConversations] = useState([
-        {
-            id: 1,
-            name: 'Sarah Chen',
-            role: 'Lead Developer',
-            avatar: '👩‍💻',
-            lastMessage: 'Just uploaded the API documentation. Can you review?',
-            time: '10:30 AM',
-            unread: 3,
-            online: true,
-            pinned: true
-        },
-        {
-            id: 2,
-            name: 'Mike Rodriguez',
-            role: 'Security Lead',
-            avatar: '👨‍💼',
-            lastMessage: 'Security audit completed successfully',
-            time: 'Yesterday',
-            unread: 0,
-            online: false,
-            pinned: true
-        },
-        {
-            id: 3,
-            name: 'Alex Johnson',
-            role: 'AI Specialist',
-            avatar: '👨‍🔬',
-            lastMessage: 'The model is training well, 85% accuracy so far',
-            time: '2 days ago',
-            unread: 1,
-            online: true,
-            pinned: false
-        },
+    const { user } = useAuth()
+    const { conversations, loading } = useConversations(user?.id)
+    const [selectedConversation, setSelectedConversation] = useState(null)
+    const [messageInput, setMessageInput] = useState('')
+    const [search, setSearch] = useState('')
+
+    const [mockConversations] = useState([
         {
             id: 4,
-            name: 'Emma Davis',
-            role: 'UX Designer',
-            avatar: '👩‍🎨',
+            name: 'Design Team',
+            role: 'Team Lead',
+            avatar: '🎨',
             lastMessage: 'New wireframes are ready for feedback',
             time: '3 days ago',
             unread: 0,

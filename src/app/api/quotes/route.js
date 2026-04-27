@@ -220,10 +220,10 @@ const getClientEmailHTML = (quoteData) => {
                 </div>
 
                 <div style="text-align: center; margin: 30px 0;">
-                    <a href="mailto:contact@algo-x.com?subject=Quote%20Inquiry%20-%20${clientInfo.name}" class="button">
+                    <a href="mailto:nicholusmush@gmail.com?subject=Quote%20Inquiry%20-%20${clientInfo.name}" class="button">
                         📧 Reply to this email
                     </a>
-                    <a href="tel:+254700000000" class="button button-secondary">
+                    <a href="tel:+254 703576876" class="button button-secondary">
                         📞 Call us
                     </a>
                 </div>
@@ -239,7 +239,7 @@ const getClientEmailHTML = (quoteData) => {
                 <p style="margin: 0 0 10px; color: #666;">Algo X Technologies</p>
                 <p style="margin: 0; font-size: 12px; color: #999;">
                     📍 Nairobi, Kenya<br>
-                    📧 contact@algo-x.com | 📞 +254 700 000 000<br>
+                    📧 nicholusmush@gmail.com | 📞 +254 703576876<br>
                     🕒 Mon-Fri: 9AM - 6PM EAT
                 </p>
             </div>
@@ -374,7 +374,7 @@ export async function POST(request) {
 
         // Send email to client
         const clientEmail = await resend.emails.send({
-            from: 'Algo X Quotes <quotes@yourdomain.com>', // Update with your domain
+            from: 'onboarding@resend.dev', // Update with your domain
             to: [quoteData.clientInfo.email],
             subject: '🎯 Your Algo X Quote Request - Thank You!',
             html: getClientEmailHTML(quoteData)
@@ -382,8 +382,8 @@ export async function POST(request) {
 
         // Send email to admin
         const adminEmail = await resend.emails.send({
-            from: 'Algo X System <system@yourdomain.com>', // Update with your domain
-            to: ['contact@algo-x.com', 'sales@algo-x.com'], // Add your admin emails
+            from: 'onboarding@resend.dev', // Update with your domain
+            to: ['nicholusmush@gmail.com'], // Add your admin emails
             subject: `🚀 New Quote Request from ${quoteData.clientInfo.name}`,
             html: getAdminEmailHTML({
                 ...quoteData,

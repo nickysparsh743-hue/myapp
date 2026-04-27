@@ -1,98 +1,28 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
     Search, Filter, Plus, MoreVertical,
     Calendar, Users, BarChart, MessageSquare,
     Clock, CheckCircle, AlertCircle, Download,
-    Eye, Edit, Trash2, Share2, Copy, TrendingUp, DollarSign
+    Eye, Edit, Trash2, Share2, Copy, TrendingUp, DollarSign, X, Check
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/contexts/AuthContext'
+import { useProjects } from '@/lib/hooks/useDashboard'
 
 export default function ProjectsPage() {
-    const [projects, setProjects] = useState([
-        {
-            id: 1,
-            name: 'E-commerce Platform',
-            description: 'Full-featured online store with AI recommendations',
-            status: 'active',
-            progress: 75,
-            startDate: 'Oct 1, 2024',
-            endDate: 'Dec 15, 2024',
-            budget: '$25,000',
-            team: 4,
-            priority: 'high',
-            tasks: { total: 24, completed: 18 }
-        },
-        {
-            id: 2,
-            name: 'Mobile Banking App',
-            description: 'Secure mobile banking with biometric authentication',
-            status: 'active',
-            progress: 45,
-            startDate: 'Sep 15, 2024',
-            endDate: 'Jan 20, 2025',
-            budget: '$35,000',
-            team: 6,
-            priority: 'critical',
-            tasks: { total: 32, completed: 14 }
-        },
-        {
-            id: 3,
-            name: 'AI Chatbot System',
-            description: 'Intelligent customer support chatbot',
-            status: 'review',
-            progress: 90,
-            startDate: 'Aug 10, 2024',
-            endDate: 'Dec 5, 2024',
-            budget: '$18,000',
-            team: 3,
-            priority: 'medium',
-            tasks: { total: 18, completed: 16 }
-        },
-        {
-            id: 4,
-            name: 'Data Analytics Dashboard',
-            description: 'Real-time business intelligence platform',
-            status: 'completed',
-            progress: 100,
-            startDate: 'Jul 1, 2024',
-            endDate: 'Nov 15, 2024',
-            budget: '$22,000',
-            team: 2,
-            priority: 'low',
-            tasks: { total: 20, completed: 20 }
-        },
-        {
-            id: 5,
-            name: 'Healthcare Management System',
-            description: 'Patient records and appointment scheduling',
-            status: 'planning',
-            progress: 20,
-            startDate: 'Dec 1, 2024',
-            endDate: 'Mar 30, 2025',
-            budget: '$40,000',
-            team: 5,
-            priority: 'high',
-            tasks: { total: 28, completed: 6 }
-        },
-        {
-            id: 6,
-            name: 'Social Media Analytics',
-            description: 'AI-powered social media insights',
-            status: 'on-hold',
-            progress: 10,
-            startDate: 'TBD',
-            endDate: 'TBD',
-            budget: '$15,000',
-            team: 2,
-            priority: 'low',
-            tasks: { total: 15, completed: 2 }
-        }
-    ])
-
+    const { user } = useAuth()
+    const { projects, loading } = useProjects(user?.id)
+    const router = useRouter()
     const [filter, setFilter] = useState('all')
     const [search, setSearch] = useState('')
+    const [deleteConfirmation, setDeleteConfirmation] = useState(null)
+    const [shareProject, setShareProject] = useState(null)
+    const [duplicating, setDuplicating] = useState(false)
+    const [deleting, setDeleting] = useState(false)
+    const [message, setMessage] = useState(null)
 
     const filteredProjects = projects.filter(project => {
         if (filter !== 'all' && project.status !== filter) return false
@@ -118,6 +48,76 @@ export default function ProjectsPage() {
             case 'medium': return 'bg-yellow-500/20 text-yellow-400'
             case 'low': return 'bg-green-500/20 text-green-400'
             default: return 'bg-white/5 text-gray-400'
+        }
+    }
+
+    const handleDeleteProject = async (projectId) => {
+        setDeleting(true)
+        try {
+            const response = await fetch(`/api/dashboard/projects/${projectId}`, {
+                method: 'DELETE',
+            })
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'Project deleted successfully' })
+                setDeleteConfirmation(null)
+                // Refresh projects list
+                setTimeout(() => {
+                    router.refresh()
+                }, 1000)
+            } else {
+                setMessage({ type: 'error', text: 'Failed to delete project' })
+            }
+        } catch (error) {
+            console.error('Error deleting project:', error)
+            setMessage({ type: 'error', text: 'Error deleting project' })
+        } finally {
+            setDeleting(false)
+        }
+    }
+
+    const handleDuplicateProject = async (project) => {
+        setDuplicating(true)
+        try {
+            const response = await fetch('/api/dashboard/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...project,
+                    name: `${project.name} (Copy)`,
+                    id: undefined,
+                    created_at: undefined,
+                    updated_at: undefined
+                })
+            })
+            if (response.ok) {
+                setMessage({ type: 'success', text: 'Project duplicated successfully' })
+                setTimeout(() => {
+                    router.refresh()
+                }, 1000)
+            } else {
+                setMessage({ type: 'error', text: 'Failed to duplicate project' })
+            }
+        } catch (error) {
+            console.error('Error duplicating project:', error)
+            setMessage({ type: 'error', text: 'Error duplicating project' })
+        } finally {
+            setDuplicating(false)
+        }
+    }
+
+    const handleShareProject = (project) => {
+        setShareProject(project)
+    }
+
+    const copyShareLink = async () => {
+        const shareLink = `${window.location.origin}/dashboard/projects/${shareProject.id}`
+        try {
+            await navigator.clipboard.writeText(shareLink)
+            setMessage({ type: 'success', text: 'Link copied to clipboard' })
+            setTimeout(() => setShareProject(null), 1000)
+        } catch (error) {
+            console.error('Error copying link:', error)
+            setMessage({ type: 'error', text: 'Failed to copy link' })
         }
     }
 
@@ -232,7 +232,7 @@ export default function ProjectsPage() {
                         <div>
                             <p className="text-sm text-gray-400">Team Members</p>
                             <h3 className="text-2xl font-bold mt-2">
-                                {projects.reduce((sum, project) => sum + project.team, 0)}
+                                {projects.reduce((sum, project) => sum + (Number(project.team) || 0), 0)}
                             </h3>
                         </div>
                         <div className="p-3 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20">
@@ -246,7 +246,7 @@ export default function ProjectsPage() {
                         <div>
                             <p className="text-sm text-gray-400">Avg. Progress</p>
                             <h3 className="text-2xl font-bold mt-2">
-                                {Math.round(projects.reduce((sum, project) => sum + project.progress, 0) / projects.length)}%
+                                {projects.length > 0 ? Math.round(projects.reduce((sum, project) => sum + (Number(project.progress) || 0), 0) / projects.length) : 0}%
                             </h3>
                         </div>
                         <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/20 to-cyan-500/20">
@@ -278,23 +278,36 @@ export default function ProjectsPage() {
                                     </button>
                                     <div className="absolute right-0 mt-2 w-48 glass-effect rounded-lg border border-white/10 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-10">
                                         <div className="p-2">
-                                            <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                                            <Link
+                                                href={`/dashboard/projects/${project.id}`}
+                                                className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2 block"
+                                            >
                                                 <Eye className="w-4 h-4" />
                                                 View Details
-                                            </button>
-                                            <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                                            </Link>
+                                            <Link
+                                                href={`/dashboard/projects/${project.id}/edit`}
+                                                className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2 block"
+                                            >
                                                 <Edit className="w-4 h-4" />
                                                 Edit Project
-                                            </button>
-                                            <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                                            </Link>
+                                            <button 
+                                                onClick={() => handleShareProject(project)}
+                                                className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
                                                 <Share2 className="w-4 h-4" />
                                                 Share
                                             </button>
-                                            <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+                                            <button 
+                                                onClick={() => handleDuplicateProject(project)}
+                                                disabled={duplicating}
+                                                className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors flex items-center gap-2 disabled:opacity-50">
                                                 <Copy className="w-4 h-4" />
-                                                Duplicate
+                                                {duplicating ? 'Duplicating...' : 'Duplicate'}
                                             </button>
-                                            <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors text-red-400 flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setDeleteConfirmation(project)}
+                                                className="w-full text-left px-3 py-2 rounded hover:bg-white/10 transition-colors text-red-400 flex items-center gap-2">
                                                 <Trash2 className="w-4 h-4" />
                                                 Delete
                                             </button>
@@ -348,7 +361,7 @@ export default function ProjectsPage() {
                                     <CheckCircle className="w-4 h-4 text-gray-400" />
                                     <div>
                                         <p className="text-gray-400">Tasks</p>
-                                        <p>{project.tasks.completed}/{project.tasks.total}</p>
+                                        <p>{project.tasks?.completed || 0}/{project.tasks?.total || 0}</p>
                                     </div>
                                 </div>
                             </div>
@@ -401,6 +414,81 @@ export default function ProjectsPage() {
                         <Plus className="w-5 h-5" />
                         Create New Project
                     </Link>
+                </div>
+            )}
+
+            {/* Success/Error Message */}
+            {message && (
+                <div className={`fixed top-4 right-4 px-6 py-3 rounded-lg ${message.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'} flex items-center gap-2`}>
+                    {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                    {message.text}
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmation && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="glass-effect rounded-2xl border border-white/10 p-6 max-w-sm">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-3 rounded-lg bg-red-500/20">
+                                <AlertCircle className="w-6 h-6 text-red-400" />
+                            </div>
+                            <h3 className="text-xl font-bold">Delete Project</h3>
+                        </div>
+                        <p className="text-gray-400 mb-6">
+                            Are you sure you want to delete <strong>{deleteConfirmation.name}</strong>? This action cannot be undone.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setDeleteConfirmation(null)}
+                                className="flex-1 px-4 py-2 rounded-lg border border-white/10 hover:border-gray-400 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleDeleteProject(deleteConfirmation.id)}
+                                disabled={deleting}
+                                className="flex-1 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Share Modal */}
+            {shareProject && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="glass-effect rounded-2xl border border-white/10 p-6 max-w-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold">Share Project</h3>
+                            <button
+                                onClick={() => setShareProject(null)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <p className="text-gray-400 text-sm mb-4">
+                            Share this project with others using the link below:
+                        </p>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard/projects/${shareProject.id}`}
+                                readOnly
+                                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
+                            />
+                            <button
+                                onClick={copyShareLink}
+                                className="px-4 py-2 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-dark font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
+                            >
+                                <Copy className="w-4 h-4" />
+                                Copy
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
