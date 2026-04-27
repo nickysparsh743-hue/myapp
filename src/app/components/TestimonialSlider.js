@@ -252,8 +252,8 @@ const TestimonialSlider = () => {
                             key={category.id}
                             onClick={() => setActiveFilter(category.id)}
                             className={`group relative px-6 py-3 rounded-full font-medium transition-all duration-300 ${activeFilter === category.id
-                                    ? 'bg-gradient-to-r from-neon-green to-neon-blue text-white shadow-lg scale-105'
-                                    : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                ? 'bg-gradient-to-r from-neon-green to-neon-blue text-white shadow-lg scale-105'
+                                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                                 }`}
                         >
                             <span className="relative z-10 flex items-center gap-2">
@@ -329,6 +329,7 @@ const TestimonialSlider = () => {
                                                     <div className="flex items-start gap-4 mb-6">
                                                         <div className="relative">
                                                             <div className={`absolute inset-0 bg-gradient-to-r ${getCategoryGradient(testimonial.category)} rounded-full blur-md opacity-50 group-hover/card:opacity-75 transition-opacity`} />
+                                                            // eslint-disable-next-line @next/next/no-img-element
                                                             <img
                                                                 src={testimonial.image}
                                                                 alt={testimonial.name}
@@ -363,8 +364,8 @@ const TestimonialSlider = () => {
                                                             <Star
                                                                 key={i}
                                                                 className={`w-5 h-5 transition-all duration-300 ${i < testimonial.rating
-                                                                        ? 'fill-yellow-400 text-yellow-400 animate-bounce'
-                                                                        : 'text-gray-600'
+                                                                    ? 'fill-yellow-400 text-yellow-400 animate-bounce'
+                                                                    : 'text-gray-600'
                                                                     }`}
                                                                 style={{ animationDelay: `${i * 100}ms` }}
                                                             />
@@ -510,8 +511,8 @@ const TestimonialSlider = () => {
                                     aria-label={`Go to slide ${index + 1}`}
                                 >
                                     <div className={`h-2 rounded-full transition-all duration-500 ${currentIndex === index
-                                            ? 'w-12 bg-gradient-to-r from-neon-green to-neon-blue'
-                                            : 'w-2 bg-white/30 group-hover:bg-white/50'
+                                        ? 'w-12 bg-gradient-to-r from-neon-green to-neon-blue'
+                                        : 'w-2 bg-white/30 group-hover:bg-white/50'
                                         }`} />
 
                                     {currentIndex === index && (
