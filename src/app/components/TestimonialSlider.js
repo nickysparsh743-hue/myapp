@@ -69,7 +69,7 @@ const TestimonialSlider = () => {
             id: 4,
             name: "Prof. David Chen",
             role: "Research Director",
-            company: "University of Nairobi",
+            company: "University of OCEANIC",
             content: "The data analytics dashboard they developed for our research department is incredible. It processes millions of data points in real-time and provides insights we couldn't get before. A game-changer for our work.",
             rating: 5,
             project: "Research Data Platform",
@@ -542,7 +542,7 @@ const TestimonialSlider = () => {
                             { name: 'FinTech Africa', logo: '🏦', color: 'from-blue-400 to-indigo-500' },
                             { name: 'HealthTech Solutions', logo: '🏥', color: 'from-green-400 to-emerald-500' },
                             { name: 'EcoFarms Kenya', logo: '🌱', color: 'from-lime-400 to-green-500' },
-                            { name: 'University of Nairobi', logo: '🎓', color: 'from-purple-400 to-pink-500' },
+                            { name: 'University of Orien', logo: '🎓', color: 'from-purple-400 to-pink-500' },
                             { name: 'LogiTech East Africa', logo: '🚚', color: 'from-orange-400 to-red-500' },
                             { name: 'AgroTech Ghana', logo: '🌾', color: 'from-yellow-400 to-amber-500' }
                         ].map((client, index) => (

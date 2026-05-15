@@ -373,14 +373,14 @@ Final pricing may vary based on detailed requirements and scope.
                                 key={key}
                                 onClick={() => toggleService(key)}
                                 className={`p-4 rounded-xl border-2 transition-all duration-300 text-left group relative overflow-hidden ${services[key]
-                                        ? 'border-neon-green bg-gradient-to-br from-neon-green/20 to-neon-blue/20'
-                                        : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
+                                    ? 'border-neon-green bg-gradient-to-br from-neon-green/20 to-neon-blue/20'
+                                    : 'border-white/10 hover:border-neon-green/30 hover:bg-white/5'
                                     }`}
                             >
                                 <div className="flex items-center justify-between mb-3">
                                     <div className={`p-2 rounded-lg transition-all ${services[key]
-                                            ? 'bg-neon-green text-dark scale-110'
-                                            : 'bg-white/5 group-hover:bg-neon-green/10'
+                                        ? 'bg-neon-green text-dark scale-110'
+                                        : 'bg-white/5 group-hover:bg-neon-green/10'
                                         }`}>
                                         <Icon className="w-5 h-5" />
                                     </div>
@@ -436,8 +436,8 @@ Final pricing may vary based on detailed requirements and scope.
                                 key={level.key}
                                 onClick={() => setComplexity(level.key)}
                                 className={`w-full p-3 rounded-lg text-left transition-all ${complexity === level.key
-                                        ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
-                                        : 'border border-white/10 hover:border-white/30'
+                                    ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
+                                    : 'border border-white/10 hover:border-white/30'
                                     }`}
                             >
                                 <div className="flex items-center justify-between mb-1">
@@ -477,8 +477,8 @@ Final pricing may vary based on detailed requirements and scope.
                                 key={time.key}
                                 onClick={() => setTimeline(time.key)}
                                 className={`w-full p-3 rounded-lg text-left transition-all ${timeline === time.key
-                                        ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
-                                        : 'border border-white/10 hover:border-white/30'
+                                    ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
+                                    : 'border border-white/10 hover:border-white/30'
                                     }`}
                             >
                                 <div className="flex items-center justify-between">
@@ -517,8 +517,8 @@ Final pricing may vary based on detailed requirements and scope.
                                 key={team.key}
                                 onClick={() => setTeamSize(team.key)}
                                 className={`w-full p-3 rounded-lg text-left transition-all ${teamSize === team.key
-                                        ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
-                                        : 'border border-white/10 hover:border-white/30'
+                                    ? 'bg-gradient-to-r from-neon-green/20 to-neon-blue/20 border border-neon-green'
+                                    : 'border border-white/10 hover:border-white/30'
                                     }`}
                             >
                                 <div className="flex items-center justify-between mb-1">
@@ -561,8 +561,8 @@ Final pricing may vary based on detailed requirements and scope.
                         {/* Message Display */}
                         {quoteMessage && (
                             <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${quoteMessage.type === 'error'
-                                    ? 'bg-red-500/10 border border-red-500/20 text-red-400'
-                                    : 'bg-green-500/10 border border-green-500/20 text-green-400'
+                                ? 'bg-red-500/10 border border-red-500/20 text-red-400'
+                                : 'bg-green-500/10 border border-green-500/20 text-green-400'
                                 }`}>
                                 {quoteMessage.type === 'error' ? (
                                     <AlertCircle className="w-5 h-5 flex-shrink-0" />

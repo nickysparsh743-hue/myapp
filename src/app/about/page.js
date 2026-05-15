@@ -1,5 +1,5 @@
 import CTA from '../components/CTA'
-import { Target, Eye, Heart, Award, Users, Globe, Shield, Cpu} from 'lucide-react'
+import { Target, Eye, Heart, Award, Users, Globe, Shield, Cpu } from 'lucide-react'
 
 const AboutPage = () => {
     const values = [
@@ -22,6 +22,21 @@ const AboutPage = () => {
             icon: Shield,
             title: 'Security',
             description: 'Prioritizing security and data protection'
+        },
+        {
+            icon: Users,
+            title: 'Collaboration',
+            description: 'Working closely with clients and partners'
+        },
+        {
+            icon: Globe,
+            title: 'African Focus',
+            description: 'Deep understanding of African markets and needs'
+        },
+        {
+            icon: Cpu,
+            title: 'AI-Driven',
+            description: 'Leveraging artificial intelligence for smarter solutions'
         },
     ]
 
@@ -46,6 +61,36 @@ const AboutPage = () => {
             role: 'Security Expert',
             expertise: ['Pen Testing', 'Security Audits', 'Compliance']
         },
+        {
+            name: 'Liam Smith',
+            role: 'AI Researcher',
+            expertise: ['NLP', 'Computer Vision', 'Predictive Models']
+        },
+        {
+            name: 'Olivia Brown',
+            role: 'Project Manager',
+            expertise: ['Agile', 'Client Communication', 'Team Leadership']
+        },
+        {
+            name: 'Noah Wilson',
+            role: 'Full Stack Developer',
+            expertise: ['Web Development', 'Mobile Apps', 'Cloud Solutions']
+        },
+        {
+            name: 'Ava Garcia',
+            role: 'Marketing Specialist',
+            expertise: ['Digital Marketing', 'Content Strategy', 'Social Media']
+        },
+        {
+            name: 'Ethan Lee',
+            role: 'Data Engineer',
+            expertise: ['Data Pipelines', 'ETL', 'Database Management']
+        },
+        {
+            name: 'Sophia Martinez',
+            role: 'networking & security specialist',
+            expertise: ['network design & implementation', 'Network monitoring & management', 'Network security solutions', 'firewall configuration & management', 'wifi security assessment', 'network performance optimization']
+        }
     ]
 
     return (
@@ -178,6 +223,17 @@ const AboutPage = () => {
                                 description: 'Your success is our priority at every step',
                                 icon: Users
                             },
+                            {
+                                title: 'Security Focused',
+                                description: 'Prioritizing security and data protection in all solutions',
+                                icon: Shield
+                            },
+                            {
+                                title: 'Innovative Solutions',
+                                description: 'Constantly exploring new technologies and approaches to stay ahead of the curve',
+                                icon: Award
+                            }
+
                         ].map((item, index) => (
                             <div key={index} className="text-center">
                                 <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-dark-gray to-dark mb-6 border border-white/10">

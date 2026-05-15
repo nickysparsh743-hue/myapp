@@ -7,7 +7,7 @@ const PortfolioPage = () => {
             title: 'AI Chatbot for Businesses',
             description: 'Intelligent chatbot solution integrated with WhatsApp and web platforms for automated customer support.',
             technologies: ['Python', 'TensorFlow', 'React', 'FastAPI', 'MongoDB'],
-            demoLink: '#',
+            demoLink: 'https://nicholus-mush.github.io/aibot',
             githubLink: '#',
             type: 'ai'
         },
@@ -15,7 +15,7 @@ const PortfolioPage = () => {
             title: 'Data Analytics Dashboard',
             description: 'Real-time business intelligence dashboard with interactive visualizations and predictive analytics.',
             technologies: ['Next.js', 'D3.js', 'Python', 'PostgreSQL', 'Redis'],
-            demoLink: '#',
+            demoLink: 'https://nicholus-mush.github.io/dprivacy/',
             githubLink: '#',
             type: 'data'
         },
@@ -23,7 +23,7 @@ const PortfolioPage = () => {
             title: 'Secure Authentication System',
             description: 'Multi-factor authentication system with biometric verification and zero-trust architecture.',
             technologies: ['Node.js', 'React', 'JWT', 'OAuth2', 'Redis'],
-            demoLink: '#',
+            demoLink: '',
             githubLink: '#',
             type: 'security'
         },
@@ -31,7 +31,7 @@ const PortfolioPage = () => {
             title: 'Smart Agriculture Bot',
             description: 'AI-powered bot for precision farming with crop monitoring and automated irrigation control.',
             technologies: ['Python', 'OpenCV', 'IoT', 'React Native', 'Firebase'],
-            demoLink: '#',
+            demoLink: '',
             githubLink: '#',
             type: 'ai'
         },
@@ -39,7 +39,7 @@ const PortfolioPage = () => {
             title: 'Predictive ML System',
             description: 'Machine learning system for predicting customer churn with 95% accuracy.',
             technologies: ['Python', 'Scikit-learn', 'Pandas', 'Flask', 'Docker'],
-            demoLink: '#',
+            demoLink: '',
             githubLink: '#',
             type: 'ai'
         },
@@ -47,10 +47,50 @@ const PortfolioPage = () => {
             title: 'E-commerce Platform',
             description: 'Full-featured e-commerce platform with AI-powered recommendations and secure payments.',
             technologies: ['Next.js', 'Stripe', 'MongoDB', 'Tailwind CSS', 'Redis'],
-            demoLink: '#',
+            demoLink: 'https://nickysparsh743-hue.github.io/mainfo',
             githubLink: '#',
             type: 'web'
         },
+        {
+            title: 'Mobile Fitness App',
+            description: 'Cross-platform mobile app for fitness tracking with AI-driven workout recommendations.',
+            technologies: ['React Native', 'TensorFlow Lite', 'Firebase', 'Redux', 'Expo'],
+            demoLink: '',
+            githubLink: '#',
+            type: 'mobile'
+        },
+        {
+            title: 'Network Security Solution',
+            description: 'Comprehensive network security solution with real-time threat detection and response.',
+            technologies: ['Node.js', 'React', 'Elasticsearch', 'Kibana', 'Redis'],
+            demoLink: '',
+            githubLink: '#',
+            type: 'security'
+        },
+        {
+            title: 'Custom Web Application',
+            description: 'Tailored web application development for unique business needs with modern technologies.',
+            technologies: ['Next.js', 'Node.js', 'MongoDB', 'Tailwind CSS', 'Docker'],
+            demoLink: '',
+            githubLink: '#',
+            type: 'web'
+        },
+        {
+            title: 'AI-Powered port Management System',
+            description: 'Intelligent port management system leveraging AI for optimized operations and real-time decision-making.',
+            technologies: ['Python', 'TensorFlow', 'Docker', 'Kubernetes', 'PostgreSQL'],
+            demoLink: 'my-ap.vercel.app',
+            githubLink: '#',
+            type: 'ai'
+        },
+        {
+            title: 'Ai powered journling app',
+            description: 'AI-powered journaling application for personalized content generation and mood tracking.',
+            technologies: ['React', 'Node.js', 'MongoDB', 'TensorFlow', 'Docker'],
+            demoLink: 'https://nicholus-mush.github.io/aiintent/',
+            githubLink: '#',
+            type: 'ai'
+        }
     ]
 
     return (

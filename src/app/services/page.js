@@ -3,7 +3,7 @@ import CTA from '../components/CTA'
 import {
     Globe, Smartphone, Cpu, BarChart3, Shield, Bot,
     Palette, FileText, Code, Database, MessageSquare,
-    TrendingUp, PaintBucket, Lock, PenTool
+    TrendingUp, PaintBucket, Lock, PenTool, Network
 } from 'lucide-react'
 
 const ServicesPage = () => {
@@ -91,6 +91,35 @@ const ServicesPage = () => {
                 'Product descriptions'
             ],
             color: 'purple'
+        },
+        {
+            icon: Network,
+            title: 'NETWORKING & SECURITY',
+            description: 'Comprehensive networking and security solutions to protect your digital assets and infrastructure plus data.',
+            features: [
+                'network design & implementation',
+                'Network monitoring & management',
+                'Network security solutions',
+                'firewall configuration & management',
+                'wifi security assessment',
+                'network performance optimization'
+
+            ],
+            color: 'RED'
+        },
+        {
+            icon: Database,
+            title: 'DATABASE SETUP & SECURITY',
+            description: 'Secure database setup and management solutions.',
+            features: [
+                'Database design & implementation',
+                'Database security',
+                'Backup & recovery',
+                'Performance optimization',
+                'Query tuning',
+                'Data integrity checks'
+            ],
+            color: 'RED'
         },
     ]
 

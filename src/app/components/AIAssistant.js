@@ -212,9 +212,16 @@ const TechAdviser = () => {
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-neon-green"></span>
+
+            <div className="absolute left-20 bottom-0 bg-dark-gray border border-neon-green/30 rounded-lg p-3 text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+              <p className="font-bold gradient-text">more assistant</p>
+              <p className="text-gray-300">Chat with Algox assistant!</p>
+            </div>
           </span>
+
         </div>
       </button>
+
 
       {/* Tech Adviser Panel */}
       {isOpen && (
@@ -263,8 +270,8 @@ const TechAdviser = () => {
                             key={cap.id}
                             onClick={() => setMode(cap.id)}
                             className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${mode === cap.id
-                                ? `bg-gradient-to-r ${cap.color} bg-opacity-20`
-                                : 'hover:bg-white/5'
+                              ? `bg-gradient-to-r ${cap.color} bg-opacity-20`
+                              : 'hover:bg-white/5'
                               }`}
                           >
                             <Icon className="w-3.5 h-3.5" />
@@ -368,8 +375,8 @@ const TechAdviser = () => {
                     >
                       <div
                         className={`max-w-[90%] rounded-2xl p-4 ${msg.role === 'user'
-                            ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark'
-                            : 'bg-dark-gray/50 border border-white/10'
+                          ? 'bg-gradient-to-r from-neon-green to-neon-blue text-dark'
+                          : 'bg-dark-gray/50 border border-white/10'
                           }`}
                       >
                         <div className="flex items-center gap-2 mb-2">
